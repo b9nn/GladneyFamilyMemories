@@ -27,8 +27,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:5173"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept"],
+    expose_headers=["*"]
 )
 
 # Create upload directories
@@ -69,12 +70,25 @@ def login(
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
+    print(f"[LOGIN] Attempt for username: '{username}'")
+
+    # Validate input
+    if not username or not password:
+        print(f"[LOGIN] Failed - Missing credentials")
+        raise HTTPException(
+            status_code=400,
+            detail="Username and password are required"
+        )
+
     user = authenticate_user(db, username, password)
     if not user:
+        print(f"[LOGIN] Failed - Invalid credentials for username: '{username}'")
         raise HTTPException(
             status_code=401,
             detail="Incorrect username or password"
         )
+
+    print(f"[LOGIN] Success for username: '{username}'")
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
@@ -85,6 +99,25 @@ def login(
 @app.get("/api/auth/me", response_model=schemas.User)
 def get_me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+
+@app.get("/api/auth/health")
+def auth_health(db: Session = Depends(get_db)):
+    """Health check endpoint to verify database and user count"""
+    try:
+        user_count = db.query(models.User).count()
+        return {
+            "status": "ok",
+            "database": "connected",
+            "user_count": user_count
+        }
+    except Exception as e:
+        print(f"[HEALTH CHECK] Database error: {str(e)}")
+        return {
+            "status": "error",
+            "database": "disconnected",
+            "error": str(e)
+        }
 
 
 # Vignettes routes
@@ -338,7 +371,50 @@ def get_audio_file(
     ).first()
     if not audio:
         raise HTTPException(status_code=404, detail="Audio recording not found")
-    return FileResponse(audio.file_path)
+
+    return FileResponse(
+        audio.file_path,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
+        }
+    )
+
+
+@app.delete("/api/audio/{audio_id}")
+def delete_audio(
+    audio_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    print(f"[DELETE AUDIO] Attempt to delete audio ID: {audio_id} by user: {current_user.username}")
+
+    audio = db.query(models.AudioRecording).filter(
+        models.AudioRecording.id == audio_id,
+        models.AudioRecording.author_id == current_user.id
+    ).first()
+
+    if not audio:
+        print(f"[DELETE AUDIO] Audio recording {audio_id} not found or user doesn't own it")
+        raise HTTPException(status_code=404, detail="Audio recording not found")
+
+    # Delete the physical file
+    try:
+        file_path = Path(audio.file_path)
+        if file_path.exists():
+            file_path.unlink()
+            print(f"[DELETE AUDIO] Deleted file: {audio.file_path}")
+    except Exception as e:
+        print(f"[DELETE AUDIO] Error deleting file: {str(e)}")
+        # Continue with database deletion even if file deletion fails
+
+    # Delete from database
+    db.delete(audio)
+    db.commit()
+
+    print(f"[DELETE AUDIO] Successfully deleted audio recording {audio_id}")
+    return {"message": "Audio recording deleted successfully"}
 
 
 # File upload routes (odds and ends)

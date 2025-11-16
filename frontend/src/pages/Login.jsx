@@ -29,7 +29,17 @@ function Login() {
         navigate('/')
       }
     } catch (err) {
-      setError(err.response?.data?.detail || 'An error occurred')
+      console.error('Authentication error:', err)
+      if (err.response) {
+        // Server responded with an error
+        setError(err.response?.data?.detail || 'Authentication failed. Please try again.')
+      } else if (err.request) {
+        // Request was made but no response received
+        setError('Cannot connect to server. Please make sure the server is running.')
+      } else {
+        // Something else happened
+        setError('An unexpected error occurred. Please try again.')
+      }
     } finally {
       setLoading(false)
     }

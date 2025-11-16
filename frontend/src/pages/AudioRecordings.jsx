@@ -10,7 +10,8 @@ function AudioRecordings() {
   const [recordingTime, setRecordingTime] = useState(0)
   const [currentPlaying, setCurrentPlaying] = useState(null)
   const [loading, setLoading] = useState(true)
-  
+  const [refreshKey, setRefreshKey] = useState(0)
+
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
   const intervalRef = useRef(null)
@@ -85,7 +86,20 @@ function AudioRecordings() {
       await axios.post('/api/audio', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
+
+      // Clean up blob URL
+      if (audioBlob) {
+        URL.revokeObjectURL(URL.createObjectURL(audioBlob))
+      }
+
       setAudioBlob(null)
+
+      // Force audio elements to reload by incrementing refresh key
+      setRefreshKey(prev => prev + 1)
+
+      // Small delay to ensure file is ready on server
+      await new Promise(resolve => setTimeout(resolve, 800))
+
       fetchRecordings()
     } catch (error) {
       console.error('Failed to upload recording:', error)
@@ -105,10 +119,31 @@ function AudioRecordings() {
       await axios.post('/api/audio', formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
+
+      // Force audio elements to reload
+      setRefreshKey(prev => prev + 1)
+
+      // Small delay to ensure file is ready
+      await new Promise(resolve => setTimeout(resolve, 800))
+
       fetchRecordings()
     } catch (error) {
       console.error('Failed to upload audio:', error)
       alert('Failed to upload audio file')
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this recording? This cannot be undone.')) {
+      return
+    }
+
+    try {
+      await axios.delete(`/api/audio/${id}`)
+      fetchRecordings()
+    } catch (error) {
+      console.error('Failed to delete recording:', error)
+      alert('Failed to delete recording')
     }
   }
 
@@ -202,7 +237,20 @@ function AudioRecordings() {
           <div className="grid grid-2">
             {recordings.map((recording) => (
               <div key={recording.id} className="card">
-                <h3 style={{ marginBottom: '0.75rem' }}>{recording.title || 'Untitled Recording'}</h3>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+                  <h3 style={{ marginBottom: 0, flex: 1 }}>{recording.title || 'Untitled Recording'}</h3>
+                  <button
+                    onClick={() => handleDelete(recording.id)}
+                    className="btn btn-danger"
+                    style={{
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem',
+                      marginLeft: '1rem'
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
                 <p style={{
                   color: 'var(--text-muted)',
                   marginBottom: '1.25rem',
@@ -219,11 +267,13 @@ function AudioRecordings() {
                   }}>{recording.description}</p>
                 )}
                 <audio
+                  key={`audio-${recording.id}-${refreshKey}`}
                   controls
-                  src={`http://localhost:8000/api/audio/${recording.id}`}
+                  src={`http://localhost:8000/api/audio/${recording.id}?v=${refreshKey}&t=${Date.now()}`}
                   onPlay={() => setCurrentPlaying(recording.id)}
                   onPause={() => setCurrentPlaying(null)}
                   style={{ width: '100%', marginTop: '1rem' }}
+                  preload="metadata"
                 />
               </div>
             ))}

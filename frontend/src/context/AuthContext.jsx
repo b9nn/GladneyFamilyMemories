@@ -33,15 +33,19 @@ export function AuthProvider({ children }) {
     const formData = new FormData()
     formData.append('username', username)
     formData.append('password', password)
-    
-    const response = await axios.post('/api/auth/login', formData)
+
+    const response = await axios.post('/api/auth/login', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    })
     const { access_token, user: userData } = response.data
-    
+
     setToken(access_token)
     setUser(userData)
     localStorage.setItem('token', access_token)
     axios.defaults.headers.common['Authorization'] = `Bearer ${access_token}`
-    
+
     return userData
   }
 
