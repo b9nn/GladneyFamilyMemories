@@ -16,7 +16,7 @@ function Navbar() {
     <nav className="navbar">
       <div className="navbar-container">
         <Link to="/" className="navbar-brand">
-          TAG Diary
+          L&TG Memories
         </Link>
         {user && (
           <>
@@ -26,6 +26,9 @@ function Navbar() {
               <Link to="/photos">Photo Gallery</Link>
               <Link to="/audio">Audio Recordings</Link>
               <Link to="/files">Files</Link>
+              {user.is_admin && (
+                <Link to="/admin" className="admin-link">Admin Panel</Link>
+              )}
             </div>
             <div className="navbar-user">
               <span>Welcome, {user.full_name || user.username}</span>

@@ -6,7 +6,15 @@
       "Bash(pip install:*)",
       "Bash(npm run dev:*)",
       "Bash(pip uninstall:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(lsof:*)",
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(sqlite3:*)",
+      "Bash(python:*)",
+      "Bash(cat:*)",
+      "Bash(kill:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

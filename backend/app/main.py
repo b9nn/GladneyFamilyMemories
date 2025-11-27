@@ -14,6 +14,7 @@ from app.database import get_db, init_db
 from app import models, schemas
 from app.auth import (
     get_current_user,
+    get_current_admin,
     get_password_hash,
     authenticate_user,
     create_access_token,
@@ -49,9 +50,227 @@ async def startup_event():
     init_db()
 
 
+# Invite code routes (admin only)
+@app.post("/api/admin/invite-codes", response_model=schemas.InviteCode)
+def create_invite_code(
+    invite: schemas.InviteCodeCreate,
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Generate a new invite code (admin only)"""
+    import secrets
+    from app.email import send_invite_email
+
+    # Generate a secure random code
+    code = secrets.token_urlsafe(16)
+
+    # Calculate expiration
+    expires_at = None
+    if invite.expires_in_days:
+        expires_at = datetime.now() + timedelta(days=invite.expires_in_days)
+
+    db_invite = models.InviteCode(
+        code=code,
+        email=invite.email,
+        created_by_id=current_admin.id,
+        expires_at=expires_at,
+    )
+    db.add(db_invite)
+    db.commit()
+    db.refresh(db_invite)
+
+    # Send email if requested and email is provided
+    if invite.send_email and invite.email:
+        try:
+            send_invite_email(
+                to_email=invite.email,
+                invite_code=code,
+                recipient_name=invite.recipient_name
+            )
+            print(f"[INVITE] Email sent to {invite.email}")
+        except Exception as e:
+            print(f"[INVITE] Failed to send email: {str(e)}")
+            # Don't fail the whole request if email fails
+
+    return db_invite
+
+
+@app.get("/api/admin/invite-codes", response_model=List[schemas.InviteCodeWithUser])
+def list_invite_codes(
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """List all invite codes with user information (admin only)"""
+    codes = db.query(models.InviteCode).order_by(models.InviteCode.created_at.desc()).all()
+
+    # Enrich with user information
+    result = []
+    for code in codes:
+        code_dict = {
+            "id": code.id,
+            "code": code.code,
+            "email": code.email,
+            "created_by_id": code.created_by_id,
+            "used_by_id": code.used_by_id,
+            "created_at": code.created_at,
+            "used_at": code.used_at,
+            "expires_at": code.expires_at,
+            "is_used": code.is_used,
+            "used_by_username": None,
+            "used_by_email": None,
+            "used_by_full_name": None,
+        }
+
+        # Get user info if code was used
+        if code.used_by_id:
+            user = db.query(models.User).filter(models.User.id == code.used_by_id).first()
+            if user:
+                code_dict["used_by_username"] = user.username
+                code_dict["used_by_email"] = user.email
+                code_dict["used_by_full_name"] = user.full_name
+
+        result.append(code_dict)
+
+    return result
+
+
+@app.delete("/api/admin/invite-codes/{code_id}")
+def delete_invite_code(
+    code_id: int,
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete an invite code (admin only)"""
+    invite = db.query(models.InviteCode).filter(models.InviteCode.id == code_id).first()
+    if not invite:
+        raise HTTPException(status_code=404, detail="Invite code not found")
+
+    db.delete(invite)
+    db.commit()
+    return {"message": "Invite code deleted"}
+
+
+# Background image routes (admin only)
+@app.post("/api/admin/background", response_model=schemas.BackgroundImage)
+async def upload_background(
+    file: UploadFile = File(...),
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Upload a background image (admin only)"""
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith('image/'):
+        raise HTTPException(status_code=400, detail="Only image files are allowed")
+
+    # Generate unique filename
+    file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
+    unique_filename = f"bg_{uuid.uuid4()}.{file_extension}"
+    file_path = UPLOAD_DIR / "photos" / unique_filename
+
+    # Save file
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Deactivate all existing backgrounds
+    db.query(models.BackgroundImage).update({"is_active": False})
+
+    # Create new background record
+    bg_image = models.BackgroundImage(
+        filename=unique_filename,
+        file_path=str(file_path),
+        uploaded_by_id=current_admin.id,
+        is_active=True
+    )
+    db.add(bg_image)
+    db.commit()
+    db.refresh(bg_image)
+
+    return bg_image
+
+
+@app.get("/api/background")
+def get_active_background(db: Session = Depends(get_db)):
+    """Get the currently active background image (public)"""
+    bg = db.query(models.BackgroundImage).filter(
+        models.BackgroundImage.is_active == True
+    ).first()
+
+    if not bg:
+        return None
+
+    return {
+        "id": bg.id,
+        "url": f"/uploads/photos/{bg.filename}"
+    }
+
+
+@app.delete("/api/admin/background/{bg_id}")
+def delete_background(
+    bg_id: int,
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a background image (admin only)"""
+    bg = db.query(models.BackgroundImage).filter(models.BackgroundImage.id == bg_id).first()
+    if not bg:
+        raise HTTPException(status_code=404, detail="Background not found")
+
+    # Delete physical file
+    try:
+        file_path = Path(bg.file_path)
+        if file_path.exists():
+            file_path.unlink()
+    except Exception as e:
+        print(f"[DELETE BACKGROUND] Error deleting file: {str(e)}")
+
+    # Delete from database
+    db.delete(bg)
+    db.commit()
+    return {"message": "Background deleted"}
+
+
 # Authentication routes
 @app.post("/api/auth/register", response_model=schemas.User)
 def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """Register a new user with a valid invite code"""
+    # Validate invite code
+    invite = db.query(models.InviteCode).filter(
+        models.InviteCode.code == user.invite_code,
+        models.InviteCode.is_used == False
+    ).first()
+
+    if not invite:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or already used invite code"
+        )
+
+    # Check if code is expired
+    if invite.expires_at and invite.expires_at < datetime.now():
+        raise HTTPException(
+            status_code=400,
+            detail="Invite code has expired"
+        )
+
+    # Check if code is email-restricted
+    if invite.email and invite.email != user.email:
+        raise HTTPException(
+            status_code=400,
+            detail="This invite code is restricted to a specific email address"
+        )
+
+    # Check if username or email already exists
+    existing_user = db.query(models.User).filter(
+        (models.User.username == user.username) | (models.User.email == user.email)
+    ).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email already registered"
+        )
+
+    # Create the user
     db_user = models.User(
         username=user.username,
         email=user.email,
@@ -61,6 +280,13 @@ def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
+
+    # Mark invite code as used
+    invite.is_used = True
+    invite.used_by_id = db_user.id
+    invite.used_at = datetime.now()
+    db.commit()
+
     return db_user
 
 
@@ -118,6 +344,71 @@ def auth_health(db: Session = Depends(get_db)):
             "database": "disconnected",
             "error": str(e)
         }
+
+
+@app.post("/api/auth/password-reset-request")
+def request_password_reset(
+    request: schemas.PasswordResetRequest,
+    db: Session = Depends(get_db)
+):
+    """Request a password reset token"""
+    user = db.query(models.User).filter(models.User.email == request.email).first()
+
+    if not user:
+        # Don't reveal whether the email exists
+        return {"message": "If an account exists with this email, a reset link has been sent."}
+
+    # Generate a reset token (simple UUID-based token for this implementation)
+    reset_token = str(uuid.uuid4())
+    user.reset_token = reset_token
+    user.reset_token_expires = datetime.now() + timedelta(hours=1)
+
+    db.commit()
+
+    # In a real application, you would send an email here
+    # For development/testing, we'll return the token
+    print(f"[PASSWORD RESET] Token for {user.email}: {reset_token}")
+
+    return {
+        "message": "If an account exists with this email, a reset link has been sent.",
+        "token": reset_token  # Only for development - remove in production!
+    }
+
+
+@app.post("/api/auth/password-reset")
+def reset_password(
+    reset_data: schemas.PasswordReset,
+    db: Session = Depends(get_db)
+):
+    """Reset password using a valid token"""
+    user = db.query(models.User).filter(
+        models.User.reset_token == reset_data.token
+    ).first()
+
+    if not user:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired reset token"
+        )
+
+    # Check if token is expired
+    if user.reset_token_expires and user.reset_token_expires < datetime.now():
+        user.reset_token = None
+        user.reset_token_expires = None
+        db.commit()
+        raise HTTPException(
+            status_code=400,
+            detail="Reset token has expired"
+        )
+
+    # Update password
+    user.hashed_password = get_password_hash(reset_data.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
+
+    db.commit()
+
+    return {"message": "Password has been reset successfully"}
 
 
 # Vignettes routes
@@ -182,12 +473,11 @@ def get_vignette(
 def update_vignette(
     vignette_id: int,
     vignette: schemas.VignetteCreate,
-    current_user: models.User = Depends(get_current_user),
+    current_admin: models.User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
     db_vignette = db.query(models.Vignette).filter(
-        models.Vignette.id == vignette_id,
-        models.Vignette.author_id == current_user.id
+        models.Vignette.id == vignette_id
     ).first()
     if not db_vignette:
         raise HTTPException(status_code=404, detail="Vignette not found")
@@ -202,17 +492,32 @@ def update_vignette(
 @app.delete("/api/vignettes/{vignette_id}")
 def delete_vignette(
     vignette_id: int,
-    current_user: models.User = Depends(get_current_user),
+    current_admin: models.User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
+    print(f"[DELETE VIGNETTE] Attempt to delete vignette ID: {vignette_id} by admin: {current_admin.username}")
+
     vignette = db.query(models.Vignette).filter(
-        models.Vignette.id == vignette_id,
-        models.Vignette.author_id == current_user.id
+        models.Vignette.id == vignette_id
     ).first()
     if not vignette:
+        print(f"[DELETE VIGNETTE] Vignette {vignette_id} not found")
         raise HTTPException(status_code=404, detail="Vignette not found")
+
+    # Delete associated vignette_photos first
+    vignette_photos = db.query(models.VignettePhoto).filter(
+        models.VignettePhoto.vignette_id == vignette_id
+    ).all()
+    for vp in vignette_photos:
+        db.delete(vp)
+
+    print(f"[DELETE VIGNETTE] Deleted {len(vignette_photos)} associated photos")
+
+    # Now delete the vignette
     db.delete(vignette)
     db.commit()
+
+    print(f"[DELETE VIGNETTE] Successfully deleted vignette {vignette_id}")
     return {"message": "Vignette deleted"}
 
 
@@ -225,14 +530,44 @@ def upload_photo(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Save file
-    file_extension = Path(file.filename).suffix
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = UPLOAD_DIR / "photos" / unique_filename
-    
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-    
+    # Get file extension and check if it's HEIC
+    file_extension = Path(file.filename).suffix.lower()
+    is_heic = file_extension in ['.heic', '.heif']
+
+    # If HEIC, convert to JPEG
+    if is_heic:
+        from pillow_heif import register_heif_opener
+        from PIL import Image
+        import io
+
+        # Register HEIF opener with Pillow
+        register_heif_opener()
+
+        # Read the uploaded HEIC file
+        file_content = file.file.read()
+
+        # Open with Pillow and convert to JPEG
+        img = Image.open(io.BytesIO(file_content))
+
+        # Convert to RGB if necessary (HEIC can have different color modes)
+        if img.mode not in ('RGB', 'L'):
+            img = img.convert('RGB')
+
+        # Save as JPEG
+        file_extension = '.jpg'
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = UPLOAD_DIR / "photos" / unique_filename
+
+        img.save(file_path, 'JPEG', quality=95)
+        print(f"[UPLOAD PHOTO] Converted HEIC to JPEG: {unique_filename}")
+    else:
+        # Save file normally for non-HEIC files
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        file_path = UPLOAD_DIR / "photos" / unique_filename
+
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
     # Create database record
     db_photo = models.Photo(
         filename=unique_filename,
@@ -273,6 +608,40 @@ def get_photo_file(
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
     return FileResponse(photo.file_path)
+
+
+@app.delete("/api/photos/{photo_id}")
+def delete_photo(
+    photo_id: int,
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    print(f"[DELETE PHOTO] Attempt to delete photo ID: {photo_id} by admin: {current_admin.username}")
+
+    photo = db.query(models.Photo).filter(
+        models.Photo.id == photo_id
+    ).first()
+
+    if not photo:
+        print(f"[DELETE PHOTO] Photo {photo_id} not found")
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    # Delete the physical file
+    try:
+        file_path = Path(photo.file_path)
+        if file_path.exists():
+            file_path.unlink()
+            print(f"[DELETE PHOTO] Deleted file: {photo.file_path}")
+    except Exception as e:
+        print(f"[DELETE PHOTO] Error deleting file: {str(e)}")
+        # Continue with database deletion even if file deletion fails
+
+    # Delete from database
+    db.delete(photo)
+    db.commit()
+
+    print(f"[DELETE PHOTO] Successfully deleted photo {photo_id}")
+    return {"message": "Photo deleted successfully"}
 
 
 # Album routes
@@ -316,7 +685,153 @@ def get_albums(
     albums = db.query(models.Album).filter(
         models.Album.created_by_id == current_user.id
     ).all()
+
+    # Add photo count to each album
+    for album in albums:
+        photo_count = db.query(models.AlbumPhoto).filter(
+            models.AlbumPhoto.album_id == album.id
+        ).count()
+        album.photo_count = photo_count
+
     return albums
+
+
+@app.get("/api/albums/{album_id}")
+def get_album(
+    album_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    album = db.query(models.Album).filter(
+        models.Album.id == album_id,
+        models.Album.created_by_id == current_user.id
+    ).first()
+
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    # Get all photos in the album
+    album_photos = db.query(models.AlbumPhoto).filter(
+        models.AlbumPhoto.album_id == album_id
+    ).all()
+
+    photos = []
+    for ap in album_photos:
+        photo = db.query(models.Photo).filter(models.Photo.id == ap.photo_id).first()
+        if photo:
+            photos.append(photo)
+
+    return {
+        "id": album.id,
+        "name": album.name,
+        "description": album.description,
+        "created_by_id": album.created_by_id,
+        "created_at": album.created_at,
+        "photo_count": len(photos),
+        "photos": photos
+    }
+
+
+@app.post("/api/albums/{album_id}/photos/{photo_id}")
+def add_photo_to_album(
+    album_id: int,
+    photo_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify album ownership
+    album = db.query(models.Album).filter(
+        models.Album.id == album_id,
+        models.Album.created_by_id == current_user.id
+    ).first()
+
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    # Verify photo ownership
+    photo = db.query(models.Photo).filter(
+        models.Photo.id == photo_id,
+        models.Photo.uploaded_by_id == current_user.id
+    ).first()
+
+    if not photo:
+        raise HTTPException(status_code=404, detail="Photo not found")
+
+    # Check if photo is already in album
+    existing = db.query(models.AlbumPhoto).filter(
+        models.AlbumPhoto.album_id == album_id,
+        models.AlbumPhoto.photo_id == photo_id
+    ).first()
+
+    if existing:
+        return {"message": "Photo already in album"}
+
+    # Add photo to album
+    album_photo = models.AlbumPhoto(
+        album_id=album_id,
+        photo_id=photo_id
+    )
+    db.add(album_photo)
+    db.commit()
+
+    return {"message": "Photo added to album"}
+
+
+@app.delete("/api/albums/{album_id}/photos/{photo_id}")
+def remove_photo_from_album(
+    album_id: int,
+    photo_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    # Verify album ownership
+    album = db.query(models.Album).filter(
+        models.Album.id == album_id,
+        models.Album.created_by_id == current_user.id
+    ).first()
+
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    # Remove photo from album
+    album_photo = db.query(models.AlbumPhoto).filter(
+        models.AlbumPhoto.album_id == album_id,
+        models.AlbumPhoto.photo_id == photo_id
+    ).first()
+
+    if not album_photo:
+        raise HTTPException(status_code=404, detail="Photo not in album")
+
+    db.delete(album_photo)
+    db.commit()
+
+    return {"message": "Photo removed from album"}
+
+
+@app.delete("/api/albums/{album_id}")
+def delete_album(
+    album_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    album = db.query(models.Album).filter(
+        models.Album.id == album_id,
+        models.Album.created_by_id == current_user.id
+    ).first()
+
+    if not album:
+        raise HTTPException(status_code=404, detail="Album not found")
+
+    # Delete all album_photo relationships
+    db.query(models.AlbumPhoto).filter(
+        models.AlbumPhoto.album_id == album_id
+    ).delete()
+
+    # Delete the album
+    db.delete(album)
+    db.commit()
+
+    return {"message": "Album deleted successfully"}
 
 
 # Audio recording routes
@@ -410,21 +925,46 @@ def get_audio_file(
     )
 
 
-@app.delete("/api/audio/{audio_id}")
-def delete_audio(
+@app.put("/api/audio/{audio_id}", response_model=schemas.AudioRecording)
+def update_audio(
     audio_id: int,
-    current_user: models.User = Depends(get_current_user),
+    title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    current_admin: models.User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    print(f"[DELETE AUDIO] Attempt to delete audio ID: {audio_id} by user: {current_user.username}")
-
+    """Update audio recording title and description (admin only)"""
     audio = db.query(models.AudioRecording).filter(
-        models.AudioRecording.id == audio_id,
-        models.AudioRecording.author_id == current_user.id
+        models.AudioRecording.id == audio_id
     ).first()
 
     if not audio:
-        print(f"[DELETE AUDIO] Audio recording {audio_id} not found or user doesn't own it")
+        raise HTTPException(status_code=404, detail="Audio recording not found")
+
+    if title is not None:
+        audio.title = title
+    if description is not None:
+        audio.description = description
+
+    db.commit()
+    db.refresh(audio)
+    return audio
+
+
+@app.delete("/api/audio/{audio_id}")
+def delete_audio(
+    audio_id: int,
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    print(f"[DELETE AUDIO] Attempt to delete audio ID: {audio_id} by admin: {current_admin.username}")
+
+    audio = db.query(models.AudioRecording).filter(
+        models.AudioRecording.id == audio_id
+    ).first()
+
+    if not audio:
+        print(f"[DELETE AUDIO] Audio recording {audio_id} not found")
         raise HTTPException(status_code=404, detail="Audio recording not found")
 
     # Delete the physical file
@@ -498,17 +1038,17 @@ def get_file(
     ).first()
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-    
+
     file_path = Path(file.file_path)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found on disk")
-    
+
     # Determine media type for proper download
     media_type = file.file_type or "application/octet-stream"
-    
+
     # Get the original filename for download
     download_filename = file.title or file.filename
-    
+
     return FileResponse(
         file.file_path,
         media_type=media_type,
@@ -517,4 +1057,64 @@ def get_file(
             "Content-Disposition": f'attachment; filename="{download_filename}"'
         }
     )
+
+
+@app.put("/api/files/{file_id}", response_model=schemas.File)
+def update_file(
+    file_id: int,
+    title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Update file title and description (admin only)"""
+    file = db.query(models.File).filter(
+        models.File.id == file_id
+    ).first()
+
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    if title is not None:
+        file.title = title
+    if description is not None:
+        file.description = description
+
+    db.commit()
+    db.refresh(file)
+    return file
+
+
+@app.delete("/api/files/{file_id}")
+def delete_file(
+    file_id: int,
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    print(f"[DELETE FILE] Attempt to delete file ID: {file_id} by admin: {current_admin.username}")
+
+    file = db.query(models.File).filter(
+        models.File.id == file_id
+    ).first()
+
+    if not file:
+        print(f"[DELETE FILE] File {file_id} not found")
+        raise HTTPException(status_code=404, detail="File not found")
+
+    # Delete the physical file
+    try:
+        file_path = Path(file.file_path)
+        if file_path.exists():
+            file_path.unlink()
+            print(f"[DELETE FILE] Deleted file: {file.file_path}")
+    except Exception as e:
+        print(f"[DELETE FILE] Error deleting file: {str(e)}")
+        # Continue with database deletion even if file deletion fails
+
+    # Delete from database
+    db.delete(file)
+    db.commit()
+
+    print(f"[DELETE FILE] Successfully deleted file {file_id}")
+    return {"message": "File deleted successfully"}
 

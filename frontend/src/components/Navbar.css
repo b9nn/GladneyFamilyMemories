@@ -93,6 +93,15 @@
   width: 100%;
 }
 
+.navbar-links a.admin-link {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.navbar-links a.admin-link:hover {
+  color: white;
+}
+
 .navbar-user {
   display: flex;
   align-items: center;

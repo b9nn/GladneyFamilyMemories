@@ -11,6 +11,8 @@ function Dashboard() {
     files: 0,
   })
   const [recentVignettes, setRecentVignettes] = useState([])
+  const [recentAudio, setRecentAudio] = useState([])
+  const [recentFiles, setRecentFiles] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -21,25 +23,41 @@ function Dashboard() {
     try {
       const [vignettesRes, photosRes, audioRes, filesRes] = await Promise.all([
         axios.get('/api/vignettes'),
-        axios.get('/api/photos?limit=1'),
+        axios.get('/api/photos'),
         axios.get('/api/audio'),
         axios.get('/api/files'),
       ])
 
       setStats({
         vignettes: vignettesRes.data.length,
-        photos: photosRes.data.length || 0,
+        photos: photosRes.data.length,
         audio: audioRes.data.length,
         files: filesRes.data.length,
       })
 
-      setRecentVignettes(vignettesRes.data.slice(0, 5))
+      // Combine all recent items with their type
+      const allRecentItems = [
+        ...vignettesRes.data.map(item => ({ ...item, type: 'vignette' })),
+        ...audioRes.data.map(item => ({ ...item, type: 'audio' })),
+        ...filesRes.data.map(item => ({ ...item, type: 'file' }))
+      ]
+
+      // Sort by created_at and take top 4
+      const sortedRecent = allRecentItems
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        .slice(0, 4)
+
+      // Separate back into categories for state
+      setRecentVignettes(sortedRecent.filter(item => item.type === 'vignette'))
+      setRecentAudio(sortedRecent.filter(item => item.type === 'audio'))
+      setRecentFiles(sortedRecent.filter(item => item.type === 'file'))
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error)
     } finally {
       setLoading(false)
     }
   }
+
 
   if (loading) {
     return <div className="loading">Loading...</div>
@@ -138,48 +156,143 @@ function Dashboard() {
         </div>
       </div>
 
-      <div style={{ marginTop: '3rem' }}>
-        <h2 style={{ marginBottom: '1.5rem' }}>Recent Vignettes</h2>
-        {recentVignettes.length === 0 ? (
+      <div style={{ marginTop: '2rem' }}>
+        <h2 style={{ marginBottom: '1rem' }}>Recent Activity</h2>
+        {recentVignettes.length === 0 && recentAudio.length === 0 && recentFiles.length === 0 ? (
           <div className="container" style={{ textAlign: 'center', padding: '3rem' }}>
             <p style={{
               fontSize: '1.1rem',
               color: 'var(--text-secondary)',
               fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
             }}>
-              No vignettes yet. <Link to="/vignettes" style={{ fontWeight: '600' }}>Create your first story</Link> and start preserving your family memories.
+              No activity yet. Start by <Link to="/vignettes" style={{ fontWeight: '600' }}>creating a vignette</Link>, <Link to="/audio" style={{ fontWeight: '600' }}>recording audio</Link>, or <Link to="/files" style={{ fontWeight: '600' }}>uploading files</Link>.
             </p>
           </div>
         ) : (
-          <div className="grid grid-2">
+          <div className="grid grid-4" style={{ gap: '1rem', alignItems: 'stretch' }}>
             {recentVignettes.map((vignette) => (
-              <div key={vignette.id} className="card">
-                <h3 style={{ marginBottom: '0.75rem' }}>{vignette.title}</h3>
-                <p style={{
-                  color: 'var(--text-muted)',
-                  marginBottom: '1rem',
-                  fontSize: '0.9rem',
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
-                }}>
-                  {format(new Date(vignette.created_at), 'MMMM d, yyyy')}
-                </p>
-                <p style={{
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 3,
-                  WebkitBoxOrient: 'vertical',
-                  color: 'var(--text-secondary)',
-                  lineHeight: '1.7',
-                  marginBottom: '1.25rem'
-                }}>
-                  {vignette.content || 'No content'}
-                </p>
-                <Link to={`/vignettes`} style={{
-                  fontWeight: '500',
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
-                }}>Read more →</Link>
-              </div>
+              <Link
+                key={`vignette-${vignette.id}`}
+                to="/vignettes"
+                style={{ textDecoration: 'none' }}
+              >
+                <div
+                  className="card"
+                  style={{ padding: '0.875rem', minHeight: '140px', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', height: '100%' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem' }}>
+                    <div style={{ fontSize: '1.35rem', flexShrink: 0, lineHeight: 1 }}>📖</div>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                      <h4 style={{ marginBottom: '0.25rem', fontSize: '0.95rem', lineHeight: 1.2, wordBreak: 'break-word' }}>{vignette.title}</h4>
+                      <p style={{
+                        color: 'var(--text-muted)',
+                        fontSize: '0.7rem',
+                        marginBottom: '0.4rem',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
+                        lineHeight: 1
+                      }}>
+                        {format(new Date(vignette.created_at), 'MMM d, yyyy')}
+                      </p>
+                      <p style={{
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.8rem',
+                        lineHeight: '1.4',
+                        wordBreak: 'break-word',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                      }}>
+                        {vignette.content || 'No content'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+            {recentAudio.map((audio) => (
+              <Link
+                key={`audio-${audio.id}`}
+                to="/audio"
+                style={{ textDecoration: 'none' }}
+              >
+                <div
+                  className="card"
+                  style={{ padding: '0.875rem', minHeight: '140px', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', height: '100%' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem' }}>
+                    <div style={{ fontSize: '1.35rem', flexShrink: 0, lineHeight: 1 }}>🎵</div>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                      <h4 style={{ marginBottom: '0.25rem', fontSize: '0.95rem', lineHeight: 1.2, wordBreak: 'break-word' }}>{audio.title}</h4>
+                      <p style={{
+                        color: 'var(--text-muted)',
+                        fontSize: '0.7rem',
+                        marginBottom: '0.4rem',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
+                        lineHeight: 1
+                      }}>
+                        {format(new Date(audio.created_at), 'MMM d, yyyy')}
+                      </p>
+                      {audio.description && (
+                        <p style={{
+                          color: 'var(--text-secondary)',
+                          fontSize: '0.8rem',
+                          lineHeight: '1.4',
+                          wordBreak: 'break-word',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {audio.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+            {recentFiles.map((file) => (
+              <Link
+                key={`file-${file.id}`}
+                to="/files"
+                style={{ textDecoration: 'none' }}
+              >
+                <div
+                  className="card"
+                  style={{ padding: '0.875rem', minHeight: '140px', cursor: 'pointer', transition: 'transform 0.2s', display: 'flex', flexDirection: 'column', height: '100%' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.65rem' }}>
+                    <div style={{ fontSize: '1.35rem', flexShrink: 0, lineHeight: 1 }}>📄</div>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+                      <h4 style={{ marginBottom: '0.25rem', fontSize: '0.95rem', lineHeight: 1.2, wordBreak: 'break-word' }}>{file.title}</h4>
+                      <p style={{
+                        color: 'var(--text-muted)',
+                        fontSize: '0.7rem',
+                        marginBottom: '0.4rem',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif',
+                        lineHeight: 1
+                      }}>
+                        {format(new Date(file.created_at), 'MMM d, yyyy')}
+                      </p>
+                      {file.description && (
+                        <p style={{
+                          color: 'var(--text-secondary)',
+                          fontSize: '0.8rem',
+                          lineHeight: '1.4',
+                          wordBreak: 'break-word',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden'
+                        }}>
+                          {file.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Link>
             ))}
           </div>
         )}

@@ -84,3 +84,4 @@ function AuthenticatedImage({ photoId, alt, className, style, ...props }) {
 
 export default AuthenticatedImage
 
+

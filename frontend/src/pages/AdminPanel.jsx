@@ -1,0 +1,393 @@
+import React, { useState, useEffect } from 'react'
+import axios from 'axios'
+import './AdminPanel.css'
+
+function AdminPanel() {
+  const [inviteCodes, setInviteCodes] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  // Form state
+  const [email, setEmail] = useState('')
+  const [expiresInDays, setExpiresInDays] = useState(30)
+  const [recipientName, setRecipientName] = useState('')
+  const [sendEmail, setSendEmail] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+
+  // Background image state
+  const [backgroundImage, setBackgroundImage] = useState(null)
+  const [uploadingBackground, setUploadingBackground] = useState(false)
+
+  useEffect(() => {
+    fetchInviteCodes()
+    fetchBackgroundImage()
+  }, [])
+
+  const fetchInviteCodes = async () => {
+    try {
+      setLoading(true)
+      const response = await axios.get('/api/admin/invite-codes')
+      setInviteCodes(response.data)
+      setError('')
+    } catch (err) {
+      console.error('Failed to fetch invite codes:', err)
+      if (err.response?.status === 403) {
+        setError('You do not have admin access')
+      } else {
+        setError('Failed to load invite codes')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const createInviteCode = async (e) => {
+    e.preventDefault()
+    setError('')
+    setSuccess('')
+
+    try {
+      const response = await axios.post('/api/admin/invite-codes', {
+        email: email || null,
+        expires_in_days: expiresInDays,
+        send_email: sendEmail,
+        recipient_name: recipientName || null
+      })
+
+      let message = `Invite code created: ${response.data.code}`
+      if (sendEmail && email) {
+        message += ` (Email sent to ${email})`
+      }
+      setSuccess(message)
+
+      setEmail('')
+      setExpiresInDays(30)
+      setRecipientName('')
+      setSendEmail(false)
+      setShowCreateForm(false)
+      fetchInviteCodes()
+    } catch (err) {
+      console.error('Failed to create invite code:', err)
+      setError(err.response?.data?.detail || 'Failed to create invite code')
+    }
+  }
+
+  const deleteInviteCode = async (codeId) => {
+    if (!confirm('Are you sure you want to delete this invite code?')) {
+      return
+    }
+
+    try {
+      await axios.delete(`/api/admin/invite-codes/${codeId}`)
+      setSuccess('Invite code deleted')
+      fetchInviteCodes()
+    } catch (err) {
+      console.error('Failed to delete invite code:', err)
+      setError('Failed to delete invite code')
+    }
+  }
+
+  const fetchBackgroundImage = async () => {
+    try {
+      const response = await axios.get('/api/background')
+      setBackgroundImage(response.data)
+    } catch (err) {
+      console.error('Failed to fetch background:', err)
+    }
+  }
+
+  const handleBackgroundUpload = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploadingBackground(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      await axios.post('/api/admin/background', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+
+      setSuccess('Background image uploaded successfully!')
+      fetchBackgroundImage()
+
+      // Reload the page to show new background
+      setTimeout(() => window.location.reload(), 1500)
+    } catch (err) {
+      console.error('Failed to upload background:', err)
+      setError('Failed to upload background image')
+    } finally {
+      setUploadingBackground(false)
+    }
+  }
+
+  const deleteBackground = async () => {
+    if (!backgroundImage || !confirm('Are you sure you want to remove the background image?')) {
+      return
+    }
+
+    try {
+      await axios.delete(`/api/admin/background/${backgroundImage.id}`)
+      setSuccess('Background image removed')
+      setBackgroundImage(null)
+
+      // Reload the page to remove background
+      setTimeout(() => window.location.reload(), 1500)
+    } catch (err) {
+      console.error('Failed to delete background:', err)
+      setError('Failed to remove background image')
+    }
+  }
+
+  const copyToClipboard = (code) => {
+    navigator.clipboard.writeText(code)
+    setSuccess(`Copied: ${code}`)
+    setTimeout(() => setSuccess(''), 3000)
+  }
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Never'
+    return new Date(dateString).toLocaleString()
+  }
+
+  const isExpired = (expiresAt) => {
+    if (!expiresAt) return false
+    return new Date(expiresAt) < new Date()
+  }
+
+  if (loading) {
+    return (
+      <div className="admin-panel">
+        <div className="container">
+          <p>Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="admin-panel">
+      <div className="container">
+        <div className="admin-header">
+          <h1>Admin Panel</h1>
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowCreateForm(!showCreateForm)}
+          >
+            {showCreateForm ? 'Cancel' : 'Create Invite Code'}
+          </button>
+        </div>
+
+        {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
+
+        {showCreateForm && (
+          <div className="create-form-card">
+            <h2>Create New Invite Code</h2>
+            <form onSubmit={createInviteCode}>
+              <div className="form-group">
+                <label>Email (Optional)</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Leave blank for any email"
+                />
+                <small>If specified, only this email can use the code</small>
+              </div>
+
+              <div className="form-group">
+                <label>Recipient Name (Optional)</label>
+                <input
+                  type="text"
+                  value={recipientName}
+                  onChange={(e) => setRecipientName(e.target.value)}
+                  placeholder="e.g., John Smith"
+                />
+                <small>Used for personalizing the email</small>
+              </div>
+
+              <div className="form-group">
+                <label>Expires In (Days)</label>
+                <input
+                  type="number"
+                  value={expiresInDays}
+                  onChange={(e) => setExpiresInDays(parseInt(e.target.value))}
+                  min="1"
+                  max="365"
+                  required
+                />
+              </div>
+
+              <div className="form-group checkbox-group">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={sendEmail}
+                    onChange={(e) => setSendEmail(e.target.checked)}
+                    disabled={!email}
+                  />
+                  <span>Send invite code via email</span>
+                </label>
+                {!email && (
+                  <small className="warning">Email address required to send invitation</small>
+                )}
+              </div>
+
+              <button type="submit" className="btn btn-primary">
+                {sendEmail && email ? 'Generate & Send Email' : 'Generate Code'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        <div className="invite-codes-section">
+          <h2>Invite Codes</h2>
+
+          {inviteCodes.length === 0 ? (
+            <p className="no-codes">No invite codes yet. Create one to get started!</p>
+          ) : (
+            <div className="codes-table-container">
+              <table className="codes-table">
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Sent To</th>
+                    <th>Status</th>
+                    <th>Registered User</th>
+                    <th>Created</th>
+                    <th>Expires</th>
+                    <th>Used At</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inviteCodes.map((code) => (
+                    <tr key={code.id} className={code.is_used ? 'used' : isExpired(code.expires_at) ? 'expired' : ''}>
+                      <td>
+                        <code className="invite-code">{code.code}</code>
+                        <button
+                          className="btn-icon"
+                          onClick={() => copyToClipboard(code.code)}
+                          title="Copy to clipboard"
+                        >
+                          📋
+                        </button>
+                      </td>
+                      <td>{code.email || 'Any'}</td>
+                      <td>
+                        {code.is_used ? (
+                          <span className="badge badge-used">Used</span>
+                        ) : isExpired(code.expires_at) ? (
+                          <span className="badge badge-expired">Expired</span>
+                        ) : (
+                          <span className="badge badge-active">Active</span>
+                        )}
+                      </td>
+                      <td>
+                        {code.is_used && code.used_by_username ? (
+                          <div className="user-info">
+                            <strong>{code.used_by_full_name || code.used_by_username}</strong>
+                            <br />
+                            <small>{code.used_by_email}</small>
+                          </div>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td>{formatDate(code.created_at)}</td>
+                      <td>{formatDate(code.expires_at)}</td>
+                      <td>{formatDate(code.used_at)}</td>
+                      <td>
+                        {!code.is_used && (
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => deleteInviteCode(code.id)}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Background Image Section */}
+        <div style={{ marginTop: '3rem' }}>
+          <h2>Background Image</h2>
+          <div className="create-form-card">
+            {backgroundImage ? (
+              <div>
+                <p style={{ marginBottom: '1rem' }}>
+                  <strong>Current Background:</strong> Active
+                </p>
+                <div style={{ marginBottom: '1rem' }}>
+                  <img
+                    src={backgroundImage.url}
+                    alt="Current background"
+                    style={{
+                      maxWidth: '150px',
+                      maxHeight: '100px',
+                      borderRadius: '8px',
+                      objectFit: 'cover'
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                  <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                    Replace Background
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleBackgroundUpload}
+                      style={{ display: 'none' }}
+                      disabled={uploadingBackground}
+                    />
+                  </label>
+                  <button
+                    className="btn"
+                    onClick={deleteBackground}
+                    style={{
+                      backgroundColor: '#dc3545',
+                      color: 'white',
+                      border: 'none'
+                    }}
+                  >
+                    Remove Background
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                  No background image set. Upload an image to use as the background for all pages.
+                </p>
+                <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                  {uploadingBackground ? 'Uploading...' : 'Upload Background Image'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleBackgroundUpload}
+                    style={{ display: 'none' }}
+                    disabled={uploadingBackground}
+                  />
+                </label>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default AdminPanel

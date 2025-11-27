@@ -11,13 +11,15 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    invite_code: str
 
 
 class User(UserBase):
     id: int
     is_active: bool
+    is_admin: bool = False
     created_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -74,7 +76,15 @@ class Album(AlbumBase):
     id: int
     created_by_id: int
     created_at: datetime
-    
+    photo_count: Optional[int] = 0
+
+    class Config:
+        from_attributes = True
+
+
+class AlbumWithPhotos(Album):
+    photos: List['Photo'] = []
+
     class Config:
         from_attributes = True
 
@@ -126,7 +136,68 @@ class File(FileBase):
     file_type: Optional[str] = None
     uploaded_by_id: int
     created_at: datetime
-    
+
+    class Config:
+        from_attributes = True
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordReset(BaseModel):
+    token: str
+    new_password: str
+
+
+class InviteCodeCreate(BaseModel):
+    email: Optional[EmailStr] = None
+    expires_in_days: Optional[int] = 30
+    send_email: bool = False
+    recipient_name: Optional[str] = None
+
+
+class InviteCode(BaseModel):
+    id: int
+    code: str
+    email: Optional[str] = None
+    created_by_id: int
+    used_by_id: Optional[int] = None
+    created_at: datetime
+    used_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    is_used: bool
+
+    class Config:
+        from_attributes = True
+
+
+class InviteCodeWithUser(BaseModel):
+    id: int
+    code: str
+    email: Optional[str] = None
+    created_by_id: int
+    used_by_id: Optional[int] = None
+    created_at: datetime
+    used_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    is_used: bool
+    used_by_username: Optional[str] = None
+    used_by_email: Optional[str] = None
+    used_by_full_name: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class BackgroundImage(BaseModel):
+    id: int
+    filename: str
+    file_path: str
+    uploaded_by_id: int
+    created_at: datetime
+    is_active: bool
+
     class Config:
         from_attributes = True
 

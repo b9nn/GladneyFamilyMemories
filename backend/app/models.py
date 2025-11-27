@@ -6,19 +6,36 @@ from app.database import Base
 
 class User(Base):
     __tablename__ = "users"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True)
     hashed_password = Column(String)
     full_name = Column(String)
     is_active = Column(Boolean, default=True)
+    is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+    reset_token = Column(String, nullable=True)
+    reset_token_expires = Column(DateTime(timezone=True), nullable=True)
+
     vignettes = relationship("Vignette", back_populates="author")
     photos = relationship("Photo", back_populates="uploaded_by_user")
     audio_recordings = relationship("AudioRecording", back_populates="author")
     files = relationship("File", back_populates="uploaded_by_user")
+
+
+class InviteCode(Base):
+    __tablename__ = "invite_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True, nullable=False)
+    email = Column(String, nullable=True)  # Optional: restrict to specific email
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    used_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    is_used = Column(Boolean, default=False)
 
 
 class Vignette(Base):
@@ -126,7 +143,7 @@ class AudioRecording(Base):
 
 class File(Base):
     __tablename__ = "files"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
@@ -135,6 +152,17 @@ class File(Base):
     file_type = Column(String)
     uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
+
     uploaded_by_user = relationship("User", back_populates="files")
+
+
+class BackgroundImage(Base):
+    __tablename__ = "background_images"
+
+    id = Column(Integer, primary_key=True, index=True)
+    filename = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)
+    uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_active = Column(Boolean, default=True)  # Only one should be active at a time
 

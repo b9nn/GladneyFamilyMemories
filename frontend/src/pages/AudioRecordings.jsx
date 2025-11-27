@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { format } from 'date-fns'
+import { useAuth } from '../context/AuthContext'
 import AuthenticatedAudio from '../components/AuthenticatedAudio'
 import './AudioRecordings.css'
 
 function AudioRecordings() {
+  const { user } = useAuth()
   const [recordings, setRecordings] = useState([])
   const [isRecording, setIsRecording] = useState(false)
   const [audioBlob, setAudioBlob] = useState(null)
@@ -12,10 +14,17 @@ function AudioRecordings() {
   const [currentPlaying, setCurrentPlaying] = useState(null)
   const [loading, setLoading] = useState(true)
   const [refreshKey, setRefreshKey] = useState(0)
+  const [audioLevel, setAudioLevel] = useState(0)
+  const [editingId, setEditingId] = useState(null)
+  const [editTitle, setEditTitle] = useState('')
+  const [editDescription, setEditDescription] = useState('')
 
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
   const intervalRef = useRef(null)
+  const audioContextRef = useRef(null)
+  const analyserRef = useRef(null)
+  const animationFrameRef = useRef(null)
 
   useEffect(() => {
     fetchRecordings()
@@ -34,19 +43,63 @@ function AudioRecordings() {
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      
-      // Use the best available mime type
-      const options = { mimeType: 'audio/webm' }
-      if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-        // Fallback to default
-        delete options.mimeType
+      // Check if MediaRecorder is supported
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Your browser does not support audio recording. Please use a modern browser like Chrome, Firefox, or Edge.')
+        return
       }
-      
+
+      console.log('Requesting microphone access...')
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          sampleRate: 44100
+        }
+      })
+      console.log('Microphone access granted')
+      streamRef.current = stream
+
+      // Set up audio level monitoring
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      audioContextRef.current = audioContext
+      const analyser = audioContext.createAnalyser()
+      analyserRef.current = analyser
+      const microphone = audioContext.createMediaStreamSource(stream)
+      microphone.connect(analyser)
+      analyser.fftSize = 256
+      const bufferLength = analyser.frequencyBinCount
+      const dataArray = new Uint8Array(bufferLength)
+
+      const updateAudioLevel = () => {
+        analyser.getByteFrequencyData(dataArray)
+        const average = dataArray.reduce((a, b) => a + b) / bufferLength
+        const normalizedLevel = Math.min(100, (average / 255) * 100)
+        setAudioLevel(normalizedLevel)
+        animationFrameRef.current = requestAnimationFrame(updateAudioLevel)
+      }
+      updateAudioLevel()
+
+      // Try different mime types for better compatibility
+      let mimeType = 'audio/webm'
+      if (!MediaRecorder.isTypeSupported('audio/webm')) {
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          mimeType = 'audio/webm;codecs=opus'
+        } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+          mimeType = 'audio/ogg;codecs=opus'
+        } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+          mimeType = 'audio/mp4'
+        } else {
+          mimeType = '' // Use browser default
+        }
+      }
+
+      console.log('Using mime type:', mimeType || 'browser default')
+      const options = mimeType ? { mimeType } : {}
+
       const mediaRecorder = new MediaRecorder(stream, options)
       mediaRecorderRef.current = mediaRecorder
-      
+
       const chunks = []
       mediaRecorder.ondataavailable = (e) => {
         console.log('Data available:', e.data.size, 'bytes')
@@ -54,46 +107,56 @@ function AudioRecordings() {
           chunks.push(e.data)
         }
       }
-      
+
       mediaRecorder.onstop = () => {
         console.log('Recording stopped, chunks:', chunks.length)
         if (chunks.length > 0) {
           const blob = new Blob(chunks, { type: mediaRecorder.mimeType || 'audio/webm' })
-          console.log('Recording stopped, blob created:', { 
-            size: blob.size, 
+          console.log('Recording stopped, blob created:', {
+            size: blob.size,
             type: blob.type,
-            chunks: chunks.length 
+            chunks: chunks.length
           })
-          
+
           if (blob.size > 0) {
             setAudioBlob(blob)
           } else {
             console.warn('Blob is empty')
-            alert('Recording appears to be empty. Please try again.')
+            alert('Recording appears to be empty. Please try speaking into your microphone and try again.')
           }
         } else {
           console.warn('No audio chunks recorded')
-          alert('No audio was recorded. Please try again.')
+          alert('No audio was recorded. Please ensure your microphone is working and try again.')
         }
         stream.getTracks().forEach(track => track.stop())
       }
-      
+
       mediaRecorder.onerror = (e) => {
         console.error('MediaRecorder error:', e)
         alert('An error occurred during recording. Please try again.')
       }
-      
+
+      mediaRecorder.onstart = () => {
+        console.log('Recording started successfully')
+      }
+
       // Start recording with timeslice to ensure data is available
       mediaRecorder.start(100) // Collect data every 100ms
       setIsRecording(true)
       setRecordingTime(0)
-      
+
       intervalRef.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1)
       }, 1000)
     } catch (error) {
       console.error('Failed to start recording:', error)
-      alert('Failed to access microphone. Please check permissions.')
+      if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+        alert('Microphone permission denied. Please allow microphone access in your browser settings and try again.')
+      } else if (error.name === 'NotFoundError') {
+        alert('No microphone found. Please connect a microphone and try again.')
+      } else {
+        alert(`Failed to access microphone: ${error.message || 'Unknown error'}. Please check your browser settings.`)
+      }
     }
   }
 
@@ -105,8 +168,15 @@ function AudioRecordings() {
       }
       mediaRecorderRef.current.stop()
       setIsRecording(false)
+      setAudioLevel(0)
       if (intervalRef.current) {
         clearInterval(intervalRef.current)
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close()
       }
     }
   }
@@ -197,6 +267,38 @@ function AudioRecordings() {
     }
   }
 
+  const handleEdit = (recording) => {
+    setEditingId(recording.id)
+    setEditTitle(recording.title || '')
+    setEditDescription(recording.description || '')
+  }
+
+  const handleSaveEdit = async () => {
+    try {
+      const formData = new FormData()
+      formData.append('title', editTitle)
+      formData.append('description', editDescription)
+
+      await axios.put(`/api/audio/${editingId}`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+
+      setEditingId(null)
+      setEditTitle('')
+      setEditDescription('')
+      fetchRecordings()
+    } catch (error) {
+      console.error('Failed to update recording:', error)
+      alert('Failed to update recording')
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setEditingId(null)
+    setEditTitle('')
+    setEditDescription('')
+  }
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
@@ -234,7 +336,7 @@ function AudioRecordings() {
         </div>
       </div>
 
-      <div className="container">
+      <div className="container" style={{ maxWidth: '400px', margin: '0 0 3rem 0' }}>
         <h2 style={{ marginBottom: '1.5rem' }}>Record New Audio</h2>
         <div className="recording-controls">
           {!isRecording && !audioBlob && (
@@ -245,9 +347,65 @@ function AudioRecordings() {
           
           {isRecording && (
             <>
-              <div className="recording-indicator">
-                <span className="recording-dot"></span>
-                Recording: {formatTime(recordingTime)}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '2rem',
+                width: '100%',
+                flexWrap: 'wrap'
+              }}>
+                <div className="recording-indicator" style={{ flex: '0 0 auto' }}>
+                  <span className="recording-dot"></span>
+                  Recording: {formatTime(recordingTime)}
+                </div>
+                <div style={{ flex: '1 1 300px', minWidth: '250px' }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '0.5rem',
+                    fontSize: '0.9rem',
+                    color: 'var(--text-secondary)',
+                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
+                  }}>
+                    <span>Audio Level</span>
+                    <span>{Math.round(audioLevel)}%</span>
+                  </div>
+                  <div style={{
+                    width: '100%',
+                    height: '40px',
+                    backgroundColor: 'var(--surface)',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    border: '2px solid var(--border)',
+                    position: 'relative'
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${audioLevel}%`,
+                      backgroundColor: audioLevel > 70 ? '#4CAF50' : audioLevel > 30 ? '#FFC107' : '#FF9800',
+                      transition: 'width 0.1s ease-out, background-color 0.3s',
+                      boxShadow: audioLevel > 5 ? `0 0 10px ${audioLevel > 70 ? '#4CAF50' : audioLevel > 30 ? '#FFC107' : '#FF9800'}` : 'none'
+                    }}></div>
+                    <div style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '0.85rem',
+                      fontWeight: '600',
+                      color: audioLevel > 50 ? 'white' : 'var(--text-primary)',
+                      textShadow: audioLevel > 50 ? '0 1px 2px rgba(0,0,0,0.3)' : 'none',
+                      pointerEvents: 'none',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
+                    }}>
+                      {audioLevel < 5 ? 'Speak into microphone...' : 'Recording...'}
+                    </div>
+                  </div>
+                </div>
               </div>
               <button onClick={stopRecording} className="btn btn-danger">
                 Stop Recording
@@ -307,44 +465,100 @@ function AudioRecordings() {
           <div className="grid grid-2">
             {recordings.map((recording) => (
               <div key={recording.id} className="card" style={{ position: 'relative' }}>
-                <h3 style={{ marginBottom: '0.75rem' }}>{recording.title || 'Untitled Recording'}</h3>
-                <p style={{
-                  color: 'var(--text-muted)',
-                  marginBottom: '1.25rem',
-                  fontSize: '0.9rem',
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
-                }}>
-                  {format(new Date(recording.created_at), 'MMMM d, yyyy')}
-                </p>
-                {recording.description && (
-                  <p style={{
-                    marginBottom: '1rem',
-                    color: 'var(--text-secondary)',
-                    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
-                  }}>{recording.description}</p>
+                {editingId === recording.id ? (
+                  <div>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Title</label>
+                      <input
+                        type="text"
+                        value={editTitle}
+                        onChange={(e) => setEditTitle(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '1rem'
+                        }}
+                      />
+                    </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Description</label>
+                      <textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        rows={3}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '1rem',
+                          resize: 'vertical'
+                        }}
+                      />
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button onClick={handleSaveEdit} className="btn btn-primary">
+                        Save
+                      </button>
+                      <button onClick={handleCancelEdit} className="btn btn-secondary">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h3 style={{ marginBottom: '0.75rem' }}>{recording.title || 'Untitled Recording'}</h3>
+                    <p style={{
+                      color: 'var(--text-muted)',
+                      marginBottom: '1.25rem',
+                      fontSize: '0.9rem',
+                      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
+                    }}>
+                      {format(new Date(recording.created_at), 'MMMM d, yyyy')}
+                    </p>
+                    {recording.description && (
+                      <p style={{
+                        marginBottom: '1rem',
+                        color: 'var(--text-secondary)',
+                        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
+                      }}>{recording.description}</p>
+                    )}
+                    <AuthenticatedAudio
+                      key={`audio-${recording.id}-${refreshKey}`}
+                      audioId={recording.id}
+                      onPlay={() => setCurrentPlaying(recording.id)}
+                      onPause={() => setCurrentPlaying(null)}
+                      style={{ width: '100%', marginTop: '1rem', marginBottom: '2.5rem' }}
+                      preload="metadata"
+                    />
+                    {user?.is_admin && (
+                      <div style={{ position: 'absolute', bottom: '1rem', right: '1rem', display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          onClick={() => handleEdit(recording)}
+                          className="btn btn-secondary"
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.7rem'
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(recording.id)}
+                          className="btn btn-danger"
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.7rem'
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </>
                 )}
-                <AuthenticatedAudio
-                  key={`audio-${recording.id}-${refreshKey}`}
-                  audioId={recording.id}
-                  onPlay={() => setCurrentPlaying(recording.id)}
-                  onPause={() => setCurrentPlaying(null)}
-                  style={{ width: '100%', marginTop: '1rem', marginBottom: '2.5rem' }}
-                  preload="metadata"
-                />
-                <button
-                  onClick={() => handleDelete(recording.id)}
-                  className="btn btn-danger"
-                  style={{
-                    position: 'absolute',
-                    bottom: '1rem',
-                    right: '1rem',
-                    padding: '0.25rem 0.5rem',
-                    fontSize: '0.7rem',
-                    minWidth: 'auto'
-                  }}
-                >
-                  Delete
-                </button>
               </div>
             ))}
           </div>
@@ -355,4 +569,3 @@ function AudioRecordings() {
 }
 
 export default AudioRecordings
-

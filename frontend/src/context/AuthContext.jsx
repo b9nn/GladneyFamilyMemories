@@ -49,17 +49,18 @@ export function AuthProvider({ children }) {
     return userData
   }
 
-  const register = async (username, password, email, fullName) => {
+  const register = async (username, password, email, fullName, inviteCode) => {
     const response = await axios.post('/api/auth/register', {
       username,
       password,
       email,
       full_name: fullName,
+      invite_code: inviteCode,
     })
-    
+
     // Auto-login after registration
     await login(username, password)
-    
+
     return response.data
   }
 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
 import { format } from 'date-fns'
+import { useAuth } from '../context/AuthContext'
 import VignetteModal from '../components/VignetteModal'
 
 function Vignettes() {
+  const { user } = useAuth()
   const [vignettes, setVignettes] = useState([])
   const [selectedVignette, setSelectedVignette] = useState(null)
   const [showModal, setShowModal] = useState(false)
@@ -138,32 +140,34 @@ function Vignettes() {
                 >
                   View
                 </button>
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                  <button 
-                    onClick={() => handleEdit(vignette)} 
-                    className="btn btn-secondary" 
-                    style={{ 
-                      padding: '0.25rem 0.5rem',
-                      fontSize: '0.7rem',
-                      flex: 'none',
-                      minWidth: 'auto'
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button 
-                    onClick={() => handleDelete(vignette.id)} 
-                    className="btn btn-danger"
-                    style={{ 
-                      padding: '0.25rem 0.5rem',
-                      fontSize: '0.7rem',
-                      flex: 'none',
-                      minWidth: 'auto'
-                    }}
-                  >
-                    Delete
-                  </button>
-                </div>
+                {user?.is_admin && (
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <button
+                      onClick={() => handleEdit(vignette)}
+                      className="btn btn-secondary"
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.7rem',
+                        flex: 'none',
+                        minWidth: 'auto'
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(vignette.id)}
+                      className="btn btn-danger"
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        fontSize: '0.7rem',
+                        flex: 'none',
+                        minWidth: 'auto'
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
