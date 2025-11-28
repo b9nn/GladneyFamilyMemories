@@ -18,6 +18,7 @@ function AudioRecordings() {
   const [editingId, setEditingId] = useState(null)
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
+  const [editCreatedAt, setEditCreatedAt] = useState('')
 
   const mediaRecorderRef = useRef(null)
   const streamRef = useRef(null)
@@ -33,7 +34,11 @@ function AudioRecordings() {
   const fetchRecordings = async () => {
     try {
       const response = await axios.get('/api/audio')
-      setRecordings(response.data)
+      // Sort recordings by created_at (oldest to newest)
+      const sortedRecordings = response.data.sort((a, b) =>
+        new Date(a.created_at) - new Date(b.created_at)
+      )
+      setRecordings(sortedRecordings)
     } catch (error) {
       console.error('Failed to fetch recordings:', error)
     } finally {
@@ -271,6 +276,10 @@ function AudioRecordings() {
     setEditingId(recording.id)
     setEditTitle(recording.title || '')
     setEditDescription(recording.description || '')
+    // Format date for input field (YYYY-MM-DD)
+    const date = new Date(recording.created_at)
+    const formattedDate = date.toISOString().split('T')[0]
+    setEditCreatedAt(formattedDate)
   }
 
   const handleSaveEdit = async () => {
@@ -278,6 +287,10 @@ function AudioRecordings() {
       const formData = new FormData()
       formData.append('title', editTitle)
       formData.append('description', editDescription)
+      // Send date as ISO string
+      if (editCreatedAt) {
+        formData.append('created_at', new Date(editCreatedAt).toISOString())
+      }
 
       await axios.put(`/api/audio/${editingId}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
@@ -286,6 +299,7 @@ function AudioRecordings() {
       setEditingId(null)
       setEditTitle('')
       setEditDescription('')
+      setEditCreatedAt('')
       fetchRecordings()
     } catch (error) {
       console.error('Failed to update recording:', error)
@@ -297,6 +311,7 @@ function AudioRecordings() {
     setEditingId(null)
     setEditTitle('')
     setEditDescription('')
+    setEditCreatedAt('')
   }
 
   const formatTime = (seconds) => {
@@ -464,7 +479,7 @@ function AudioRecordings() {
         ) : (
           <div className="grid grid-2">
             {recordings.map((recording) => (
-              <div key={recording.id} className="card" style={{ position: 'relative' }}>
+              <div key={recording.id} className="card" style={{ position: 'relative', padding: '1rem' }}>
                 {editingId === recording.id ? (
                   <div>
                     <div style={{ marginBottom: '1rem' }}>
@@ -498,6 +513,21 @@ function AudioRecordings() {
                         }}
                       />
                     </div>
+                    <div style={{ marginBottom: '1rem' }}>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Date Created</label>
+                      <input
+                        type="date"
+                        value={editCreatedAt}
+                        onChange={(e) => setEditCreatedAt(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.5rem',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          fontSize: '1rem'
+                        }}
+                      />
+                    </div>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                       <button onClick={handleSaveEdit} className="btn btn-primary">
                         Save
@@ -509,18 +539,19 @@ function AudioRecordings() {
                   </div>
                 ) : (
                   <>
-                    <h3 style={{ marginBottom: '0.75rem' }}>{recording.title || 'Untitled Recording'}</h3>
+                    <h3 style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>{recording.title || 'Untitled Recording'}</h3>
                     <p style={{
                       color: 'var(--text-muted)',
-                      marginBottom: '1.25rem',
-                      fontSize: '0.9rem',
+                      marginBottom: '0.75rem',
+                      fontSize: '0.8rem',
                       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
                     }}>
                       {format(new Date(recording.created_at), 'MMMM d, yyyy')}
                     </p>
                     {recording.description && (
                       <p style={{
-                        marginBottom: '1rem',
+                        marginBottom: '0.75rem',
+                        fontSize: '0.9rem',
                         color: 'var(--text-secondary)',
                         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
                       }}>{recording.description}</p>
@@ -530,7 +561,7 @@ function AudioRecordings() {
                       audioId={recording.id}
                       onPlay={() => setCurrentPlaying(recording.id)}
                       onPause={() => setCurrentPlaying(null)}
-                      style={{ width: '100%', marginTop: '1rem', marginBottom: '2.5rem' }}
+                      style={{ width: '100%', marginTop: '0.5rem', marginBottom: '2rem' }}
                       preload="metadata"
                     />
                     {user?.is_admin && (

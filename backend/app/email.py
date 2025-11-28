@@ -140,7 +140,7 @@ def send_invite_email(to_email: str, invite_code: str, recipient_name: Optional[
         <div class="content">
             <p>{greeting}</p>
 
-            <p>You've been invited to join our family tree website! This is a private space where we can share memories, photos, stories, and stay connected.</p>
+            <p>This is an invitation to join Lorna and Tom's private Memories website... we will be posting written vignettes, photos, audio files (maybe), and other files you may be interested to view sometime, to know more about us!</p>
 
             <div class="invite-code">
                 <p style="margin: 0 0 10px 0; font-size: 14px; color: #666;">Your Invite Code:</p>

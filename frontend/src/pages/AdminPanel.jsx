@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react'
 import axios from 'axios'
+import { useAuth } from '../context/AuthContext'
 import './AdminPanel.css'
 
 function AdminPanel() {
+  const { user } = useAuth()
   const [inviteCodes, setInviteCodes] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -19,9 +21,13 @@ function AdminPanel() {
   const [backgroundImage, setBackgroundImage] = useState(null)
   const [uploadingBackground, setUploadingBackground] = useState(false)
 
+  // Registered users state
+  const [registeredUsers, setRegisteredUsers] = useState([])
+
   useEffect(() => {
     fetchInviteCodes()
     fetchBackgroundImage()
+    fetchRegisteredUsers()
   }, [])
 
   const fetchInviteCodes = async () => {
@@ -94,6 +100,30 @@ function AdminPanel() {
       setBackgroundImage(response.data)
     } catch (err) {
       console.error('Failed to fetch background:', err)
+    }
+  }
+
+  const fetchRegisteredUsers = async () => {
+    try {
+      const response = await axios.get('/api/admin/users')
+      setRegisteredUsers(response.data)
+    } catch (err) {
+      console.error('Failed to fetch registered users:', err)
+    }
+  }
+
+  const deleteUser = async (userId, username) => {
+    if (!confirm(`Are you sure you want to delete user "${username}"? This will permanently delete all their content (vignettes, photos, audio recordings, etc.).`)) {
+      return
+    }
+
+    try {
+      await axios.delete(`/api/admin/users/${userId}`)
+      setSuccess(`User "${username}" deleted successfully`)
+      fetchRegisteredUsers()
+    } catch (err) {
+      console.error('Failed to delete user:', err)
+      setError(err.response?.data?.detail || 'Failed to delete user')
     }
   }
 
@@ -249,8 +279,8 @@ function AdminPanel() {
         <div className="invite-codes-section">
           <h2>Invite Codes</h2>
 
-          {inviteCodes.length === 0 ? (
-            <p className="no-codes">No invite codes yet. Create one to get started!</p>
+          {inviteCodes.filter(code => !code.is_used).length === 0 ? (
+            <p className="no-codes">No active invite codes. Create one to get started!</p>
           ) : (
             <div className="codes-table-container">
               <table className="codes-table">
@@ -259,15 +289,13 @@ function AdminPanel() {
                     <th>Code</th>
                     <th>Sent To</th>
                     <th>Status</th>
-                    <th>Registered User</th>
                     <th>Created</th>
                     <th>Expires</th>
-                    <th>Used At</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {inviteCodes.map((code) => (
+                  {inviteCodes.filter(code => !code.is_used).map((code) => (
                     <tr key={code.id} className={code.is_used ? 'used' : isExpired(code.expires_at) ? 'expired' : ''}>
                       <td>
                         <code className="invite-code">{code.code}</code>
@@ -281,33 +309,69 @@ function AdminPanel() {
                       </td>
                       <td>{code.email || 'Any'}</td>
                       <td>
-                        {code.is_used ? (
-                          <span className="badge badge-used">Used</span>
-                        ) : isExpired(code.expires_at) ? (
+                        {isExpired(code.expires_at) ? (
                           <span className="badge badge-expired">Expired</span>
                         ) : (
                           <span className="badge badge-active">Active</span>
                         )}
                       </td>
-                      <td>
-                        {code.is_used && code.used_by_username ? (
-                          <div className="user-info">
-                            <strong>{code.used_by_full_name || code.used_by_username}</strong>
-                            <br />
-                            <small>{code.used_by_email}</small>
-                          </div>
-                        ) : (
-                          <span className="text-muted">—</span>
-                        )}
-                      </td>
                       <td>{formatDate(code.created_at)}</td>
                       <td>{formatDate(code.expires_at)}</td>
-                      <td>{formatDate(code.used_at)}</td>
                       <td>
-                        {!code.is_used && (
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => deleteInviteCode(code.id)}
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        {/* Registered Users Section */}
+        <div style={{ marginTop: '3rem' }}>
+          <h2>Registered Users</h2>
+          {registeredUsers.length === 0 ? (
+            <p className="no-codes">No users registered yet.</p>
+          ) : (
+            <div className="codes-table-container">
+              <table className="codes-table">
+                <thead>
+                  <tr>
+                    <th>Username</th>
+                    <th>Full Name</th>
+                    <th>Email</th>
+                    <th>Admin</th>
+                    <th>Registered</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {registeredUsers.map((registeredUser) => (
+                    <tr key={registeredUser.id}>
+                      <td><strong>{registeredUser.username}</strong></td>
+                      <td>{registeredUser.full_name}</td>
+                      <td>{registeredUser.email}</td>
+                      <td>
+                        {registeredUser.is_admin ? (
+                          <span className="badge badge-used">Admin</span>
+                        ) : (
+                          <span className="badge badge-active">User</span>
+                        )}
+                      </td>
+                      <td>{formatDate(registeredUser.created_at)}</td>
+                      <td>
+                        {user && registeredUser.id !== user.id && (
                           <button
                             className="btn btn-danger btn-sm"
-                            onClick={() => deleteInviteCode(code.id)}
+                            onClick={() => deleteUser(registeredUser.id, registeredUser.username)}
+                            style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}
                           >
                             Delete
                           </button>
@@ -342,8 +406,8 @@ function AdminPanel() {
                     }}
                   />
                 </div>
-                <div style={{ display: 'flex', gap: '1rem' }}>
-                  <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <label className="btn btn-primary btn-sm" style={{ cursor: 'pointer', padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}>
                     Replace Background
                     <input
                       type="file"
@@ -354,12 +418,14 @@ function AdminPanel() {
                     />
                   </label>
                   <button
-                    className="btn"
+                    className="btn btn-sm"
                     onClick={deleteBackground}
                     style={{
                       backgroundColor: '#dc3545',
                       color: 'white',
-                      border: 'none'
+                      border: 'none',
+                      padding: '0.25rem 0.5rem',
+                      fontSize: '0.85rem'
                     }}
                   >
                     Remove Background
@@ -371,7 +437,7 @@ function AdminPanel() {
                 <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
                   No background image set. Upload an image to use as the background for all pages.
                 </p>
-                <label className="btn btn-primary" style={{ cursor: 'pointer' }}>
+                <label className="btn btn-primary btn-sm" style={{ cursor: 'pointer', padding: '0.25rem 0.5rem', fontSize: '0.85rem' }}>
                   {uploadingBackground ? 'Uploading...' : 'Upload Background Image'}
                   <input
                     type="file"

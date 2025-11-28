@@ -134,6 +134,27 @@ def list_invite_codes(
     return result
 
 
+@app.get("/api/admin/users")
+def list_users(
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """List all registered users (admin only)"""
+    users = db.query(models.User).order_by(models.User.created_at.desc()).all()
+
+    return [
+        {
+            "id": user.id,
+            "username": user.username,
+            "full_name": user.full_name,
+            "email": user.email,
+            "is_admin": user.is_admin,
+            "created_at": user.created_at
+        }
+        for user in users
+    ]
+
+
 @app.delete("/api/admin/invite-codes/{code_id}")
 def delete_invite_code(
     code_id: int,
@@ -148,6 +169,28 @@ def delete_invite_code(
     db.delete(invite)
     db.commit()
     return {"message": "Invite code deleted"}
+
+
+@app.delete("/api/admin/users/{user_id}")
+def delete_user(
+    user_id: int,
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Delete a user (admin only)"""
+    # Prevent admin from deleting themselves
+    if user_id == current_admin.id:
+        raise HTTPException(status_code=400, detail="Cannot delete your own account")
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    # Delete user's content first (cascade will handle some, but we'll be explicit)
+    # This ensures referential integrity
+    db.delete(user)
+    db.commit()
+    return {"message": "User deleted successfully"}
 
 
 # Background image routes (admin only)
@@ -930,10 +973,11 @@ def update_audio(
     audio_id: int,
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
+    created_at: Optional[str] = Form(None),
     current_admin: models.User = Depends(get_current_admin),
     db: Session = Depends(get_db)
 ):
-    """Update audio recording title and description (admin only)"""
+    """Update audio recording title, description, and created date (admin only)"""
     audio = db.query(models.AudioRecording).filter(
         models.AudioRecording.id == audio_id
     ).first()
@@ -945,6 +989,12 @@ def update_audio(
         audio.title = title
     if description is not None:
         audio.description = description
+    if created_at is not None:
+        try:
+            from datetime import datetime
+            audio.created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format")
 
     db.commit()
     db.refresh(audio)
