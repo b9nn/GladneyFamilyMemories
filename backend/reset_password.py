@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 Password Reset Script for TAG Diary Website
 Run this script to reset a user's password.
 """
 
 import sys
+import io
 from app.database import SessionLocal
 from app import models
 from app.auth import get_password_hash
+
+# Fix Windows console encoding
+if sys.platform == 'win32':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
 def reset_password(username, new_password):
     """Reset password for a user"""
