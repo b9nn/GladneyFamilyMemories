@@ -29,8 +29,10 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:5173",
+        "http://mrtag.com",
         "https://mrtag.com",
-        "http://mrtag.com"
+        "http://www.mrtag.com",
+        "https://www.mrtag.com"
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
