@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import axios from 'axios'
+import axios from '../config/api'
 import { format } from 'date-fns'
 
 function Dashboard() {

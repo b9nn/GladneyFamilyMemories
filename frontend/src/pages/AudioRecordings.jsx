@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react'
-import axios from 'axios'
+import axios from '../config/api'
 import { format } from 'date-fns'
 import { useAuth } from '../context/AuthContext'
 import AuthenticatedAudio from '../components/AuthenticatedAudio'

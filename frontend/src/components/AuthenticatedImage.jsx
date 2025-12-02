@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import axios from 'axios'
+import axios from '../config/api'
 
 function AuthenticatedImage({ photoId, alt, className, style, ...props }) {
   const [imageUrl, setImageUrl] = useState(null)
