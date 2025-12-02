@@ -394,6 +394,37 @@ def auth_health(db: Session = Depends(get_db)):
         }
 
 
+@app.post("/api/auth/initialize", response_model=schemas.User)
+def initialize_first_admin(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    """Create the first admin user - only works when database has 0 users"""
+    # Check if any users exist
+    user_count = db.query(models.User).count()
+    if user_count > 0:
+        raise HTTPException(
+            status_code=403,
+            detail="Database already has users. Use regular registration."
+        )
+
+    print(f"[INIT] Creating first admin user: {user.username}")
+
+    # Create first admin user
+    db_user = models.User(
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        hashed_password=get_password_hash(user.password),
+        is_admin=True,
+        is_active=True
+    )
+
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+
+    print(f"[INIT] First admin user created successfully: {user.username}")
+    return db_user
+
+
 @app.post("/api/auth/password-reset-request")
 def request_password_reset(
     request: schemas.PasswordResetRequest,
