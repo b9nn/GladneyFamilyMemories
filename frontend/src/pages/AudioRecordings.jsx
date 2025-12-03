@@ -326,37 +326,23 @@ function AudioRecordings() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1>Voice Recordings</h1>
-          <p style={{
-            fontSize: '1.1rem',
-            color: 'var(--text-secondary)',
-            marginTop: '-1rem',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
-          }}>
-            Capture your voice and stories for future generations
-          </p>
-        </div>
-        {user?.is_admin && (
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-              + Upload Audio
-              <input
-                type="file"
-                accept="audio/*"
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-              />
-            </label>
-          </div>
-        )}
+      <div style={{ marginBottom: '3rem' }}>
+        <h1>Voice Recordings</h1>
+        <p style={{
+          fontSize: '1.1rem',
+          color: 'var(--text-secondary)',
+          marginTop: '-1rem',
+          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
+        }}>
+          Capture your voice and stories for future generations
+        </p>
       </div>
 
       {user?.is_admin && (
-        <div className="container" style={{ maxWidth: '400px', margin: '0 0 3rem 0' }}>
-          <h2 style={{ marginBottom: '1.5rem' }}>Record New Audio</h2>
-          <div className="recording-controls">
+        <div style={{ display: 'flex', gap: '2rem', marginBottom: '3rem', flexWrap: 'wrap' }}>
+          <div className="container" style={{ flex: '1 1 400px', maxWidth: '500px' }}>
+            <h2 style={{ marginBottom: '1.5rem' }}>Record New Audio</h2>
+            <div className="recording-controls">
             {!isRecording && !audioBlob && (
               <button onClick={startRecording} className="btn btn-primary">
                 Start Recording
@@ -466,6 +452,28 @@ function AudioRecordings() {
             )}
           </div>
         </div>
+
+        <div className="container" style={{ flex: '1 1 400px', maxWidth: '500px' }}>
+          <h2 style={{ marginBottom: '1.5rem' }}>Upload Audio File</h2>
+          <p style={{
+            fontSize: '0.95rem',
+            color: 'var(--text-secondary)',
+            marginBottom: '1.5rem',
+            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", sans-serif'
+          }}>
+            Upload an existing audio file from your device
+          </p>
+          <label className="btn btn-primary" style={{ cursor: 'pointer', width: '100%', textAlign: 'center' }}>
+            + Upload Audio File
+            <input
+              type="file"
+              accept="audio/*"
+              onChange={handleFileUpload}
+              style={{ display: 'none' }}
+            />
+          </label>
+        </div>
+      </div>
       )}
 
       <div style={{ marginTop: '3rem' }}>

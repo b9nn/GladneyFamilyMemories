@@ -8,10 +8,10 @@ function Footer() {
     <footer className="footer">
       <div className="footer-content">
         <div className="footer-left">
-          <span>© Copyright {currentYear}</span>
+          <span>© Copyright All Rights Reserved</span>
         </div>
         <div className="footer-right">
-          <span>Website by Ben Gladney</span>
+          <span>Website by Tom and Ben Gladney</span>
         </div>
       </div>
     </footer>
