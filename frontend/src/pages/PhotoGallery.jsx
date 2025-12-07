@@ -349,8 +349,12 @@ function PhotoGallery() {
               </p>
             </div>
           ) : (
-            <div className="photo-grid">
-              {albumPhotos.map((photo) => (
+            <div className="photo-chronological-grid">
+              {[...albumPhotos].sort((a, b) => {
+                const dateA = new Date(a.taken_at || a.created_at)
+                const dateB = new Date(b.taken_at || b.created_at)
+                return dateB - dateA
+              }).map((photo) => (
                 <div key={photo.id} className="photo-item" style={{ position: 'relative' }}>
                   <AuthenticatedImage
                     photoId={photo.id}
