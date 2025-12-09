@@ -946,6 +946,32 @@ def delete_photo(
         print(f"[DELETE PHOTO] Photo {photo_id} not found")
         raise HTTPException(status_code=404, detail="Photo not found")
 
+    # Delete all related records first (to avoid foreign key constraint errors)
+
+    # Delete from album_photos
+    album_photos = db.query(models.AlbumPhoto).filter(
+        models.AlbumPhoto.photo_id == photo_id
+    ).all()
+    for ap in album_photos:
+        db.delete(ap)
+    print(f"[DELETE PHOTO] Deleted {len(album_photos)} album associations")
+
+    # Delete from vignette_photos
+    vignette_photos = db.query(models.VignettePhoto).filter(
+        models.VignettePhoto.photo_id == photo_id
+    ).all()
+    for vp in vignette_photos:
+        db.delete(vp)
+    print(f"[DELETE PHOTO] Deleted {len(vignette_photos)} vignette associations")
+
+    # Delete from photo_people
+    photo_people = db.query(models.PhotoPerson).filter(
+        models.PhotoPerson.photo_id == photo_id
+    ).all()
+    for pp in photo_people:
+        db.delete(pp)
+    print(f"[DELETE PHOTO] Deleted {len(photo_people)} people tags")
+
     # Delete the physical file
     try:
         file_path = Path(photo.file_path)
@@ -1138,7 +1164,7 @@ def add_photo_to_album(
     ).first()
 
     if existing:
-        return {"message": "Photo already in album"}
+        raise HTTPException(status_code=400, detail="Photo is already in this album")
 
     # Add photo to album
     album_photo = models.AlbumPhoto(

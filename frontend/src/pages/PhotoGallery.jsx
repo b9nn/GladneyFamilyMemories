@@ -191,7 +191,8 @@ function PhotoGallery() {
       await fetchAlbums()
     } catch (error) {
       console.error('Failed to add photo to album:', error)
-      alert('Failed to add photo to album.')
+      const errorMessage = error.response?.data?.detail || 'Failed to add photo to album.'
+      alert(errorMessage)
     }
   }
 
