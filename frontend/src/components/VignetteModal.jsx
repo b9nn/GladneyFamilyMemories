@@ -15,6 +15,10 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
     if (vignette) {
       setTitle(vignette.title || '')
       setContent(vignette.content || '')
+      // Load already attached photos when editing
+      if (vignette.photos && vignette.photos.length > 0) {
+        setSelectedPhotos(vignette.photos.map(p => p.id))
+      }
     }
     fetchPhotos()
   }, [vignette])
@@ -64,9 +68,13 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
 
   return (
     <div className="modal" onClick={onClose}>
-      <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal-content"
+        onClick={(e) => e.stopPropagation()}
+        style={!editing ? { maxWidth: '1200px', width: '90%' } : {}}
+      >
         <div className="modal-header">
-          <h2>{editing ? (vignette ? 'Edit Vignette' : 'Create Vignette') : 'View Vignette'}</h2>
+          <h2>{editing ? (vignette ? 'Edit Vignette' : 'Create Vignette') : vignette.title}</h2>
           <button className="close-btn" onClick={onClose}>×</button>
         </div>
 
@@ -92,7 +100,10 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
             </div>
 
             <div className="form-group">
-              <label>Add Photos</label>
+              <label>Attach Photos to This Vignette</label>
+              <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.75rem', marginTop: '-0.5rem' }}>
+                Click photos to select/deselect them for this vignette
+              </p>
               <div className="photo-selection">
                 {availablePhotos.map((photo) => (
                   <div
@@ -128,13 +139,50 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
           </form>
         ) : (
           <div>
-            <h3>{vignette.title}</h3>
             <p style={{ color: '#666', marginBottom: '1rem' }}>
               {new Date(vignette.created_at).toLocaleDateString()}
             </p>
-            <div style={{ whiteSpace: 'pre-wrap', marginBottom: '1rem' }}>
+            <div style={{ whiteSpace: 'pre-wrap', marginBottom: '1.5rem' }}>
               {vignette.content || 'No content'}
             </div>
+
+            {/* Show attached photos in view mode */}
+            {vignette.photos && vignette.photos.length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h4 style={{ marginBottom: '1rem', fontSize: '1.1rem', color: '#333' }}>Attached Photos</h4>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                  gap: '1rem'
+                }}>
+                  {vignette.photos.map((photo) => (
+                    <div key={photo.id} style={{
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                    }}>
+                      <AuthenticatedImage
+                        photoId={photo.id}
+                        alt={photo.title || 'Photo'}
+                        style={{ width: '100%', height: '150px', objectFit: 'cover' }}
+                      />
+                      {photo.title && (
+                        <p style={{
+                          padding: '0.5rem',
+                          margin: 0,
+                          fontSize: '0.85rem',
+                          backgroundColor: '#f5f5f5',
+                          textAlign: 'center'
+                        }}>
+                          {photo.title}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <button onClick={onClose} className="btn btn-primary">
               Close
             </button>

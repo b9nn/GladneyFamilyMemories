@@ -651,7 +651,7 @@ def create_vignette(
     db.add(db_vignette)
     db.commit()
     db.refresh(db_vignette)
-    
+
     # Add photos if provided
     if vignette.photo_ids:
         for idx, photo_id in enumerate(vignette.photo_ids):
@@ -663,9 +663,25 @@ def create_vignette(
                     position=idx,
                 )
                 db.add(vignette_photo)
-    
+
     db.commit()
-    return db_vignette
+    db.refresh(db_vignette)
+
+    # Load photos for response - manually build the list for serialization
+    vignette_photos = db.query(models.VignettePhoto).filter(
+        models.VignettePhoto.vignette_id == db_vignette.id
+    ).order_by(models.VignettePhoto.position).all()
+
+    # Return a dictionary instead of SQLAlchemy object to avoid relationship issues
+    return {
+        "id": db_vignette.id,
+        "title": db_vignette.title,
+        "content": db_vignette.content,
+        "author_id": db_vignette.author_id,
+        "created_at": db_vignette.created_at,
+        "updated_at": db_vignette.updated_at,
+        "photos": [vp.photo for vp in vignette_photos]
+    }
 
 
 @app.get("/api/vignettes", response_model=List[schemas.Vignette])
@@ -679,7 +695,24 @@ def get_vignettes(
         models.Vignette.sort_order.asc(),
         models.Vignette.created_at.desc()
     ).all()
-    return vignettes
+
+    # Add photos to each vignette - return as dictionaries
+    result = []
+    for vignette in vignettes:
+        vignette_photos = db.query(models.VignettePhoto).filter(
+            models.VignettePhoto.vignette_id == vignette.id
+        ).order_by(models.VignettePhoto.position).all()
+        result.append({
+            "id": vignette.id,
+            "title": vignette.title,
+            "content": vignette.content,
+            "author_id": vignette.author_id,
+            "created_at": vignette.created_at,
+            "updated_at": vignette.updated_at,
+            "photos": [vp.photo for vp in vignette_photos]
+        })
+
+    return result
 
 
 @app.get("/api/vignettes/{vignette_id}", response_model=schemas.Vignette)
@@ -694,7 +727,22 @@ def get_vignette(
     ).first()
     if not vignette:
         raise HTTPException(status_code=404, detail="Vignette not found")
-    return vignette
+
+    # Load photos for this vignette
+    vignette_photos = db.query(models.VignettePhoto).filter(
+        models.VignettePhoto.vignette_id == vignette.id
+    ).order_by(models.VignettePhoto.position).all()
+
+    # Return a dictionary instead of SQLAlchemy object to avoid relationship issues
+    return {
+        "id": vignette.id,
+        "title": vignette.title,
+        "content": vignette.content,
+        "author_id": vignette.author_id,
+        "created_at": vignette.created_at,
+        "updated_at": vignette.updated_at,
+        "photos": [vp.photo for vp in vignette_photos]
+    }
 
 
 @app.put("/api/vignettes/{vignette_id}", response_model=schemas.Vignette)
@@ -713,8 +761,44 @@ def update_vignette(
     db_vignette.title = vignette.title
     db_vignette.content = vignette.content
     db.commit()
+
+    # Update photos - remove existing and add new ones
+    # Delete existing photo associations
+    existing_photos = db.query(models.VignettePhoto).filter(
+        models.VignettePhoto.vignette_id == db_vignette.id
+    ).all()
+    for ep in existing_photos:
+        db.delete(ep)
+    db.commit()
+
+    # Add new photo associations
+    if vignette.photo_ids:
+        for idx, photo_id in enumerate(vignette.photo_ids):
+            vignette_photo = models.VignettePhoto(
+                vignette_id=db_vignette.id,
+                photo_id=photo_id,
+                position=idx,
+            )
+            db.add(vignette_photo)
+        db.commit()
+
     db.refresh(db_vignette)
-    return db_vignette
+
+    # Load photos for response - manually build the list for serialization
+    vignette_photos = db.query(models.VignettePhoto).filter(
+        models.VignettePhoto.vignette_id == db_vignette.id
+    ).order_by(models.VignettePhoto.position).all()
+
+    # Return a dictionary instead of SQLAlchemy object to avoid relationship issues
+    return {
+        "id": db_vignette.id,
+        "title": db_vignette.title,
+        "content": db_vignette.content,
+        "author_id": db_vignette.author_id,
+        "created_at": db_vignette.created_at,
+        "updated_at": db_vignette.updated_at,
+        "photos": [vp.photo for vp in vignette_photos]
+    }
 
 
 @app.patch("/api/vignettes/{vignette_id}", response_model=schemas.Vignette)

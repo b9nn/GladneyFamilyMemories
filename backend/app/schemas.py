@@ -49,7 +49,8 @@ class Vignette(VignetteBase):
     author_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
-    
+    photos: Optional[List['Photo']] = []
+
     class Config:
         from_attributes = True
 
@@ -224,4 +225,9 @@ class BackgroundImage(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Update forward references
+Vignette.model_rebuild()
+AlbumWithPhotos.model_rebuild()
 
