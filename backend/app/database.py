@@ -2,8 +2,19 @@ from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
+from pathlib import Path
 
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./tag_diary.db")
+
+# Ensure the database directory exists for SQLite
+if "sqlite" in DATABASE_URL:
+    # Extract the file path from the SQLite URL
+    if DATABASE_URL.startswith("sqlite:///"):
+        db_path = DATABASE_URL.replace("sqlite:///", "")
+        db_dir = Path(db_path).parent
+        if db_dir and str(db_dir) != ".":
+            db_dir.mkdir(parents=True, exist_ok=True)
+            print(f"[DATABASE] Ensured directory exists: {db_dir}")
 
 engine = create_engine(
     DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
