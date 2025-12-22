@@ -12,9 +12,14 @@ if "sqlite" in DATABASE_URL:
     if DATABASE_URL.startswith("sqlite:///"):
         db_path = DATABASE_URL.replace("sqlite:///", "")
         db_dir = Path(db_path).parent
-        if db_dir and str(db_dir) != ".":
-            db_dir.mkdir(parents=True, exist_ok=True)
-            print(f"[DATABASE] Ensured directory exists: {db_dir}")
+        if db_dir and str(db_dir) not in [".", ""]:
+            try:
+                db_dir.mkdir(parents=True, exist_ok=True)
+                print(f"[DATABASE] Ensured directory exists: {db_dir}")
+            except PermissionError:
+                print(f"[DATABASE] Warning: Cannot create directory {db_dir}, using current directory")
+                # Fall back to current directory
+                DATABASE_URL = "sqlite:///./tag_diary.db"
 
 engine = create_engine(
     DATABASE_URL, connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
