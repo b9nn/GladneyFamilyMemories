@@ -10,6 +10,8 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
   const [availablePhotos, setAvailablePhotos] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isListening, setIsListening] = useState(false)
+  const [recognition, setRecognition] = useState(null)
 
   useEffect(() => {
     if (vignette) {
@@ -21,6 +23,44 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
       }
     }
     fetchPhotos()
+
+    // Initialize speech recognition
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
+      const recognitionInstance = new SpeechRecognition()
+      recognitionInstance.continuous = true
+      recognitionInstance.interimResults = true
+      recognitionInstance.lang = 'en-US'
+
+      recognitionInstance.onresult = (event) => {
+        let interimTranscript = ''
+        let finalTranscript = ''
+
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript + ' '
+          } else {
+            interimTranscript += transcript
+          }
+        }
+
+        if (finalTranscript) {
+          setContent(prev => prev + finalTranscript)
+        }
+      }
+
+      recognitionInstance.onerror = (event) => {
+        console.error('Speech recognition error:', event.error)
+        setIsListening(false)
+      }
+
+      recognitionInstance.onend = () => {
+        setIsListening(false)
+      }
+
+      setRecognition(recognitionInstance)
+    }
   }, [vignette])
 
   const fetchPhotos = async () => {
@@ -66,6 +106,21 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
     )
   }
 
+  const toggleDictation = () => {
+    if (!recognition) {
+      setError('Voice dictation is not supported in your browser. Please use Chrome, Safari, or Edge.')
+      return
+    }
+
+    if (isListening) {
+      recognition.stop()
+      setIsListening(false)
+    } else {
+      recognition.start()
+      setIsListening(true)
+    }
+  }
+
   return (
     <div className="modal" onClick={onClose}>
       <div
@@ -91,12 +146,49 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
             </div>
 
             <div className="form-group">
-              <label>Content</label>
+              <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>Content</span>
+                <button
+                  type="button"
+                  onClick={toggleDictation}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    border: isListening ? '2px solid #dc3545' : '1px solid #6366f1',
+                    backgroundColor: isListening ? '#ffe6e6' : 'white',
+                    color: isListening ? '#dc3545' : '#6366f1',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    fontWeight: '500',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    transition: 'all 0.2s'
+                  }}
+                  title={isListening ? 'Stop dictation' : 'Start dictation'}
+                >
+                  🎤 {isListening ? 'Stop Dictation' : 'Start Dictation'}
+                </button>
+              </label>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="Write your vignette here..."
+                placeholder="Write your vignette here... or click 'Start Dictation' to speak"
+                style={{
+                  border: isListening ? '2px solid #dc3545' : '1px solid #ddd',
+                  boxShadow: isListening ? '0 0 0 3px rgba(220, 53, 69, 0.1)' : 'none'
+                }}
               />
+              {isListening && (
+                <p style={{
+                  fontSize: '0.85rem',
+                  color: '#dc3545',
+                  marginTop: '0.5rem',
+                  fontWeight: '500'
+                }}>
+                  🔴 Recording... Speak now
+                </p>
+              )}
             </div>
 
             <div className="form-group">
