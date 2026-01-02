@@ -440,22 +440,6 @@ function Vignettes() {
         <div className="grid grid-3">
           {sortedItems.map((item) => (
             <div key={`${item.itemType}-${item.id}`} className="card" style={{ textAlign: item.itemType === 'file' ? 'center' : 'left' }}>
-              {/* Badge to show type - only for vignettes */}
-              {user?.is_admin && item.itemType === 'vignette' && (
-                <div style={{
-                  display: 'inline-block',
-                  padding: '0.25rem 0.75rem',
-                  borderRadius: '12px',
-                  fontSize: '0.75rem',
-                  fontWeight: '600',
-                  marginBottom: '0.75rem',
-                  backgroundColor: '#e3f2fd',
-                  color: '#1976d2'
-                }}>
-                  📖 Vignette
-                </div>
-              )}
-
               {item.itemType === 'vignette' ? (
                 // Vignette Display
                 <>
