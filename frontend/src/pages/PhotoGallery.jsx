@@ -519,7 +519,6 @@ function PhotoGallery() {
                                     />
                                   </label>
                                 )}
-                                <div style={{ fontSize: '2rem', marginBottom: '0.5rem', textAlign: 'center' }}>📁</div>
                                 <h3 style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>{album.name}</h3>
                                 {album.description && (
                                   <p style={{
