@@ -16,6 +16,7 @@ load_dotenv()
 
 from app.database import get_db, init_db
 from app import models, schemas
+from app import storage
 from app.auth import (
     get_current_user,
     get_current_admin,
@@ -324,11 +325,17 @@ async def upload_background(
     # Generate unique filename
     file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
     unique_filename = f"bg_{uuid.uuid4()}.{file_extension}"
-    file_path = UPLOAD_DIR / "photos" / unique_filename
 
-    # Save file
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Read file content
+    file_content = await file.read()
+
+    # Upload to cloud storage or local filesystem
+    file_url = storage.upload_file(
+        io.BytesIO(file_content),
+        unique_filename,
+        "photos",
+        file.content_type
+    )
 
     # Deactivate all existing backgrounds
     db.query(models.BackgroundImage).update({"is_active": False})
@@ -336,7 +343,7 @@ async def upload_background(
     # Create new background record
     bg_image = models.BackgroundImage(
         filename=unique_filename,
-        file_path=str(file_path),
+        file_path=file_url,
         uploaded_by_id=current_admin.id,
         is_active=True
     )
@@ -374,11 +381,9 @@ def delete_background(
     if not bg:
         raise HTTPException(status_code=404, detail="Background not found")
 
-    # Delete physical file
+    # Delete physical file from cloud or local storage
     try:
-        file_path = Path(bg.file_path)
-        if file_path.exists():
-            file_path.unlink()
+        storage.delete_file(bg.file_path)
     except Exception as e:
         print(f"[DELETE BACKGROUND] Error deleting file: {str(e)}")
 
@@ -1063,14 +1068,18 @@ def upload_photo(
         # Save as JPEG
         file_extension = '.jpg'
         unique_filename = f"{uuid.uuid4()}{file_extension}"
-        file_path = UPLOAD_DIR / "photos" / unique_filename
 
-        img.save(file_path, 'JPEG', quality=95)
+        # Save to BytesIO buffer for cloud upload
+        img_buffer = io.BytesIO()
+        img.save(img_buffer, 'JPEG', quality=95)
+        img_buffer.seek(0)
+
+        # Upload to cloud storage or local
+        file_url = storage.upload_file(img_buffer, unique_filename, "photos", "image/jpeg")
         print(f"[UPLOAD PHOTO] Converted HEIC to JPEG: {unique_filename}")
     else:
         # Save file normally for non-HEIC files
         unique_filename = f"{uuid.uuid4()}{file_extension}"
-        file_path = UPLOAD_DIR / "photos" / unique_filename
 
         # Read file content to extract EXIF
         file_content = file.file.read()
@@ -1090,14 +1099,18 @@ def upload_photo(
         except Exception as e:
             print(f"[UPLOAD PHOTO] Could not extract EXIF date: {str(e)}")
 
-        # Write file to disk
-        with open(file_path, "wb") as buffer:
-            buffer.write(file_content)
+        # Upload to cloud storage or local
+        file_url = storage.upload_file(
+            io.BytesIO(file_content),
+            unique_filename,
+            "photos",
+            file.content_type
+        )
 
     # Create database record
     db_photo = models.Photo(
         filename=unique_filename,
-        file_path=str(file_path),
+        file_path=file_url,  # Store URL instead of local path
         title=title or file.filename,
         description=description,
         uploaded_by_id=current_user.id,
@@ -1182,12 +1195,10 @@ def delete_photo(
         db.delete(pp)
     print(f"[DELETE PHOTO] Deleted {len(photo_people)} people tags")
 
-    # Delete the physical file
+    # Delete the physical file from cloud or local storage
     try:
-        file_path = Path(photo.file_path)
-        if file_path.exists():
-            file_path.unlink()
-            print(f"[DELETE PHOTO] Deleted file: {photo.file_path}")
+        storage.delete_file(photo.file_path)
+        print(f"[DELETE PHOTO] Deleted file: {photo.file_path}")
     except Exception as e:
         print(f"[DELETE PHOTO] Error deleting file: {str(e)}")
         # Continue with database deletion even if file deletion fails
@@ -1468,7 +1479,7 @@ def reorder_albums(
 
 
 @app.post("/api/albums/{album_id}/background")
-def upload_album_background(
+async def upload_album_background(
     album_id: int,
     file: UploadFile = File(...),
     current_admin: models.User = Depends(get_current_admin),
@@ -1487,35 +1498,36 @@ def upload_album_background(
     # Generate unique filename
     file_extension = Path(file.filename).suffix or '.jpg'
     unique_filename = f"album_bg_{uuid.uuid4()}{file_extension}"
-    file_path = UPLOAD_DIR / "albums" / unique_filename
 
-    # Create albums directory if it doesn't exist
-    (UPLOAD_DIR / "albums").mkdir(parents=True, exist_ok=True)
+    # Read file content
+    file_content = await file.read()
 
-    # Save the file
+    # Upload to cloud storage or local filesystem
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+        file_url = storage.upload_file(
+            io.BytesIO(file_content),
+            unique_filename,
+            "albums",
+            file.content_type
+        )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to save file: {str(e)}")
 
     # Delete old background image if it exists
     if album.background_image:
-        old_path = Path(album.background_image)
-        if old_path.exists():
-            old_path.unlink()
+        storage.delete_file(album.background_image)
 
-    # Update album with new background image path
-    album.background_image = str(file_path)
+    # Update album with new background image URL
+    album.background_image = file_url
     db.commit()
     db.refresh(album)
 
-    return {"message": "Background uploaded successfully", "background_image": str(file_path)}
+    return {"message": "Background uploaded successfully", "background_image": file_url}
 
 
 # Audio recording routes
 @app.post("/api/audio", response_model=schemas.AudioRecording)
-def upload_audio(
+async def upload_audio(
     file: UploadFile = File(...),
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
@@ -1523,7 +1535,7 @@ def upload_audio(
     db: Session = Depends(get_db)
 ):
     print(f"[UPLOAD AUDIO] User: {current_user.username}, Filename: {file.filename}, Content-Type: {file.content_type}")
-    
+
     # Handle file extension - use .webm if no extension or if it's a blob
     file_extension = Path(file.filename).suffix if file.filename else '.webm'
     if not file_extension or file_extension == '':
@@ -1536,22 +1548,29 @@ def upload_audio(
             file_extension = '.wav'
         else:
             file_extension = '.webm'  # Default to webm for browser recordings
-    
+
     unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = UPLOAD_DIR / "audio" / unique_filename
-    
-    print(f"[UPLOAD AUDIO] Saving to: {file_path}")
-    
+
+    print(f"[UPLOAD AUDIO] Uploading: {unique_filename}")
+
     try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-        
-        file_size = file_path.stat().st_size
-        print(f"[UPLOAD AUDIO] File saved successfully, size: {file_size} bytes")
-        
+        # Read file content
+        file_content = await file.read()
+        file_size = len(file_content)
+
+        # Upload to cloud storage or local filesystem
+        file_url = storage.upload_file(
+            io.BytesIO(file_content),
+            unique_filename,
+            "audio",
+            file.content_type
+        )
+
+        print(f"[UPLOAD AUDIO] File uploaded successfully, size: {file_size} bytes")
+
         db_audio = models.AudioRecording(
             filename=unique_filename,
-            file_path=str(file_path),
+            file_path=file_url,
             title=title or file.filename or f"Recording {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             description=description,
             author_id=current_user.id,
@@ -1559,14 +1578,11 @@ def upload_audio(
         db.add(db_audio)
         db.commit()
         db.refresh(db_audio)
-        
+
         print(f"[UPLOAD AUDIO] Database record created, ID: {db_audio.id}")
         return db_audio
     except Exception as e:
         print(f"[UPLOAD AUDIO] Error: {str(e)}")
-        # Clean up file if it was created
-        if file_path.exists():
-            file_path.unlink()
         raise HTTPException(status_code=500, detail=f"Failed to save audio file: {str(e)}")
 
 
@@ -1652,12 +1668,10 @@ def delete_audio(
         print(f"[DELETE AUDIO] Audio recording {audio_id} not found")
         raise HTTPException(status_code=404, detail="Audio recording not found")
 
-    # Delete the physical file
+    # Delete the physical file from cloud or local storage
     try:
-        file_path = Path(audio.file_path)
-        if file_path.exists():
-            file_path.unlink()
-            print(f"[DELETE AUDIO] Deleted file: {audio.file_path}")
+        storage.delete_file(audio.file_path)
+        print(f"[DELETE AUDIO] Deleted file: {audio.file_path}")
     except Exception as e:
         print(f"[DELETE AUDIO] Error deleting file: {str(e)}")
         # Continue with database deletion even if file deletion fails
@@ -1672,7 +1686,7 @@ def delete_audio(
 
 # File upload routes (odds and ends)
 @app.post("/api/files", response_model=schemas.File)
-def upload_file(
+async def upload_file(
     file: UploadFile = File(...),
     title: Optional[str] = Form(None),
     description: Optional[str] = Form(None),
@@ -1682,14 +1696,21 @@ def upload_file(
 ):
     file_extension = Path(file.filename).suffix
     unique_filename = f"{uuid.uuid4()}{file_extension}"
-    file_path = UPLOAD_DIR / "files" / unique_filename
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    # Read file content
+    file_content = await file.read()
+
+    # Upload to cloud storage or local filesystem
+    file_url = storage.upload_file(
+        io.BytesIO(file_content),
+        unique_filename,
+        "files",
+        file.content_type
+    )
 
     db_file = models.File(
         filename=unique_filename,
-        file_path=str(file_path),
+        file_path=file_url,
         title=title or file.filename,
         description=description,
         file_type=file.content_type,
@@ -1819,12 +1840,10 @@ def delete_file(
         print(f"[DELETE FILE] File {file_id} not found")
         raise HTTPException(status_code=404, detail="File not found")
 
-    # Delete the physical file
+    # Delete the physical file from cloud or local storage
     try:
-        file_path = Path(file.file_path)
-        if file_path.exists():
-            file_path.unlink()
-            print(f"[DELETE FILE] Deleted file: {file.file_path}")
+        storage.delete_file(file.file_path)
+        print(f"[DELETE FILE] Deleted file: {file.file_path}")
     except Exception as e:
         print(f"[DELETE FILE] Error deleting file: {str(e)}")
         # Continue with database deletion even if file deletion fails
