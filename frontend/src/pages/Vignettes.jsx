@@ -40,7 +40,7 @@ function Vignettes() {
 
   const fetchFiles = async () => {
     try {
-      const response = await axios.get('/api/files')
+      const response = await axios.get('/api/files?source=vignettes')
       setFiles(response.data)
     } catch (error) {
       console.error('Failed to fetch files:', error)
