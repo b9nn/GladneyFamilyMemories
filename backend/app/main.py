@@ -1695,33 +1695,47 @@ async def upload_file(
     current_user: models.User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    file_extension = Path(file.filename).suffix
-    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    print(f"[UPLOAD FILE] User: {current_user.username}, Filename: {file.filename}, Source: {source}")
 
-    # Read file content
-    file_content = await file.read()
+    try:
+        file_extension = Path(file.filename).suffix
+        unique_filename = f"{uuid.uuid4()}{file_extension}"
+        print(f"[UPLOAD FILE] Generated filename: {unique_filename}")
 
-    # Upload to cloud storage or local filesystem
-    file_url = storage.upload_file(
-        io.BytesIO(file_content),
-        unique_filename,
-        "files",
-        file.content_type
-    )
+        # Read file content
+        file_content = await file.read()
+        print(f"[UPLOAD FILE] File read, size: {len(file_content)} bytes")
 
-    db_file = models.File(
-        filename=unique_filename,
-        file_path=file_url,
-        title=title or file.filename,
-        description=description,
-        file_type=file.content_type,
-        source=source,
-        uploaded_by_id=current_user.id,
-    )
-    db.add(db_file)
-    db.commit()
-    db.refresh(db_file)
-    return db_file
+        # Upload to cloud storage or local filesystem
+        print(f"[UPLOAD FILE] Uploading to storage...")
+        file_url = storage.upload_file(
+            io.BytesIO(file_content),
+            unique_filename,
+            "files",
+            file.content_type
+        )
+        print(f"[UPLOAD FILE] Upload successful, URL: {file_url}")
+
+        db_file = models.File(
+            filename=unique_filename,
+            file_path=file_url,
+            title=title or file.filename,
+            description=description,
+            file_type=file.content_type,
+            source=source,
+            uploaded_by_id=current_user.id,
+        )
+        db.add(db_file)
+        db.commit()
+        db.refresh(db_file)
+        print(f"[UPLOAD FILE] Database record created, ID: {db_file.id}")
+        return db_file
+    except Exception as e:
+        print(f"[UPLOAD FILE] Error: {str(e)}")
+        print(f"[UPLOAD FILE] Error type: {type(e)}")
+        import traceback
+        print(f"[UPLOAD FILE] Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to upload file: {str(e)}")
 
 
 @app.get("/api/files", response_model=List[schemas.File])
