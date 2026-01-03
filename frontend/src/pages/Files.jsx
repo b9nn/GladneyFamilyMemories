@@ -29,22 +29,28 @@ function Files() {
 
   const handleFileUpload = async (e) => {
     const uploadedFiles = Array.from(e.target.files)
+    console.log('[FILES] Uploading files:', uploadedFiles.length)
 
     for (const file of uploadedFiles) {
+      console.log('[FILES] Uploading file:', file.name, file.type, file.size)
       const formData = new FormData()
       formData.append('file', file)
       formData.append('title', file.name)
       formData.append('source', 'files')
 
       try {
-        await axios.post('/api/files', formData, {
+        const response = await axios.post('/api/files', formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         })
+        console.log('[FILES] Upload successful:', response.data)
       } catch (error) {
-        console.error('Failed to upload file:', error)
+        console.error('[FILES] Failed to upload file:', error)
+        console.error('[FILES] Error details:', error.response?.data)
+        alert(`Failed to upload ${file.name}: ${error.response?.data?.detail || error.message}`)
       }
     }
 
+    console.log('[FILES] Refreshing file list')
     fetchFiles()
   }
 
