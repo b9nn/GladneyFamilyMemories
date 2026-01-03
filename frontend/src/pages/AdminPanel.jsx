@@ -163,28 +163,39 @@ function AdminPanel() {
   }
 
   const handleBackgroundUpload = async (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    setUploadingBackground(true)
-    setError('')
-    setSuccess('')
-
     try {
+      console.log('[ADMIN] handleBackgroundUpload triggered')
+      console.log('[ADMIN] Event:', e)
+      console.log('[ADMIN] Files:', e.target.files)
+
+      const file = e.target.files?.[0]
+      console.log('[ADMIN] Selected file:', file)
+
+      if (!file) {
+        console.log('[ADMIN] No file selected')
+        return
+      }
+
+      setUploadingBackground(true)
+      setError('')
+      setSuccess('')
+
       const formData = new FormData()
       formData.append('file', file)
+      console.log('[ADMIN] Uploading background image:', file.name)
 
       await axios.post('/api/admin/background', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
 
+      console.log('[ADMIN] Background upload successful')
       setSuccess('Background image uploaded successfully!')
       fetchBackgroundImage()
 
       // Reload the page to show new background
       setTimeout(() => window.location.reload(), 1500)
     } catch (err) {
-      console.error('Failed to upload background:', err)
+      console.error('[ADMIN] Failed to upload background:', err)
       setError('Failed to upload background image')
     } finally {
       setUploadingBackground(false)
