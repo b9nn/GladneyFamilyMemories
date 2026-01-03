@@ -33,20 +33,22 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
       recognitionInstance.lang = 'en-US'
 
       recognitionInstance.onresult = (event) => {
-        let interimTranscript = ''
         let finalTranscript = ''
 
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcript = event.results[i][0].transcript
           if (event.results[i].isFinal) {
             finalTranscript += transcript + ' '
-          } else {
-            interimTranscript += transcript
           }
         }
 
         if (finalTranscript) {
-          setContent(prev => prev + finalTranscript)
+          setContent(prev => {
+            const newContent = prev + finalTranscript
+            console.log('[Dictation] Added:', finalTranscript)
+            console.log('[Dictation] New content length:', newContent.length)
+            return newContent
+          })
         }
       }
 
@@ -77,6 +79,12 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
     setError('')
     setLoading(true)
 
+    // Stop dictation if it's running
+    if (isListening && recognition) {
+      recognition.stop()
+      setIsListening(false)
+    }
+
     try {
       const data = {
         title,
@@ -84,14 +92,22 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
         photo_ids: selectedPhotos,
       }
 
+      console.log('[VignetteModal] Saving vignette:', {
+        title,
+        contentLength: content.length,
+        photoCount: selectedPhotos.length
+      })
+
       if (vignette) {
         await axios.put(`/api/vignettes/${vignette.id}`, data)
       } else {
         await axios.post('/api/vignettes', data)
       }
 
+      console.log('[VignetteModal] Save successful')
       onSave()
     } catch (err) {
+      console.error('[VignetteModal] Save failed:', err)
       setError(err.response?.data?.detail || 'Failed to save vignette')
     } finally {
       setLoading(false)
@@ -113,11 +129,19 @@ function VignetteModal({ vignette, editing, onClose, onSave }) {
     }
 
     if (isListening) {
+      console.log('[Dictation] Stopping recognition')
       recognition.stop()
       setIsListening(false)
     } else {
-      recognition.start()
-      setIsListening(true)
+      console.log('[Dictation] Starting recognition')
+      try {
+        recognition.start()
+        setIsListening(true)
+        setError('') // Clear any previous errors
+      } catch (err) {
+        console.error('[Dictation] Failed to start:', err)
+        setError('Failed to start dictation. Please try again.')
+      }
     }
   }
 
