@@ -262,6 +262,53 @@ def delete_user(
     return {"message": "User deleted successfully"}
 
 
+@app.get("/api/admin/mistagged-files")
+def get_mistagged_files(
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Get all files that are tagged as 'vignettes' (admin only)
+
+    These files may have been uploaded before the source filtering fix
+    and should likely be re-tagged as 'files'.
+    """
+    mistagged = db.query(models.File).filter(
+        models.File.source == "vignettes"
+    ).order_by(models.File.created_at.desc()).all()
+
+    return {
+        "count": len(mistagged),
+        "files": mistagged
+    }
+
+
+@app.post("/api/admin/fix-file-sources")
+def fix_file_sources(
+    current_admin: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """Fix all mistagged files by changing source from 'vignettes' to 'files' (admin only)
+
+    This will move all files currently showing on the Vignettes page
+    to the Files page instead.
+    """
+    mistagged = db.query(models.File).filter(
+        models.File.source == "vignettes"
+    ).all()
+
+    count = 0
+    for file in mistagged:
+        file.source = "files"
+        count += 1
+
+    db.commit()
+
+    return {
+        "message": f"Successfully updated {count} files",
+        "updated_count": count
+    }
+
+
 # Background image routes (admin only)
 @app.post("/api/admin/background", response_model=schemas.BackgroundImage)
 async def upload_background(

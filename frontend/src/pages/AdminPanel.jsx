@@ -24,10 +24,15 @@ function AdminPanel() {
   // Registered users state
   const [registeredUsers, setRegisteredUsers] = useState([])
 
+  // Mistagged files state
+  const [mistaggedFiles, setMistaggedFiles] = useState([])
+  const [fixingFiles, setFixingFiles] = useState(false)
+
   useEffect(() => {
     fetchInviteCodes()
     fetchBackgroundImage()
     fetchRegisteredUsers()
+    fetchMistaggedFiles()
   }, [])
 
   const fetchInviteCodes = async () => {
@@ -109,6 +114,36 @@ function AdminPanel() {
       setRegisteredUsers(response.data)
     } catch (err) {
       console.error('Failed to fetch registered users:', err)
+    }
+  }
+
+  const fetchMistaggedFiles = async () => {
+    try {
+      const response = await axios.get('/api/admin/mistagged-files')
+      setMistaggedFiles(response.data.files || [])
+    } catch (err) {
+      console.error('Failed to fetch mistagged files:', err)
+    }
+  }
+
+  const fixMistaggedFiles = async () => {
+    if (!confirm(`This will move ${mistaggedFiles.length} file(s) from the Vignettes page to the Files page. Continue?`)) {
+      return
+    }
+
+    setFixingFiles(true)
+    setError('')
+    setSuccess('')
+
+    try {
+      const response = await axios.post('/api/admin/fix-file-sources')
+      setSuccess(response.data.message)
+      fetchMistaggedFiles() // Refresh the list
+    } catch (err) {
+      console.error('Failed to fix file sources:', err)
+      setError(err.response?.data?.detail || 'Failed to fix file sources')
+    } finally {
+      setFixingFiles(false)
     }
   }
 
@@ -443,6 +478,49 @@ function AdminPanel() {
                     disabled={uploadingBackground}
                   />
                 </label>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Fix Mistagged Files Section */}
+        <div style={{ marginTop: '3rem' }}>
+          <h2>Fix File Page Assignment</h2>
+          <div className="create-form-card">
+            {mistaggedFiles.length > 0 ? (
+              <div>
+                <p style={{ marginBottom: '1rem' }}>
+                  <strong>{mistaggedFiles.length} file(s)</strong> are currently appearing on the Vignettes page
+                  but should be on the Files page.
+                </p>
+                <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                  This happens when files were uploaded before the page filtering system was implemented.
+                  Click below to move them to the Files page.
+                </p>
+                <div style={{ marginBottom: '1rem', maxHeight: '200px', overflowY: 'auto', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '4px' }}>
+                  <p style={{ fontWeight: '500', marginBottom: '0.5rem' }}>Files to be moved:</p>
+                  <ul style={{ margin: 0, paddingLeft: '1.5rem' }}>
+                    {mistaggedFiles.map(file => (
+                      <li key={file.id} style={{ fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                        {file.title || file.filename}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={fixMistaggedFiles}
+                  disabled={fixingFiles}
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}
+                >
+                  {fixingFiles ? 'Moving Files...' : `Move ${mistaggedFiles.length} File(s) to Files Page`}
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  ✓ All files are correctly assigned to their pages. No action needed.
+                </p>
               </div>
             )}
           </div>
