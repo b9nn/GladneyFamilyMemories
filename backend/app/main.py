@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import os
 import shutil
 import uuid
+import io
 from pathlib import Path
 from dotenv import load_dotenv
 
