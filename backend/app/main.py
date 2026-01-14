@@ -661,6 +661,35 @@ def demote_user_from_admin(
     return user
 
 
+@app.patch("/api/admin/users/{user_id}/username")
+def update_user_username(
+    user_id: int,
+    new_username: str = Form(...),
+    db: Session = Depends(get_db),
+    current_admin: models.User = Depends(get_current_admin)
+):
+    """Update a user's username (admin only)"""
+    # Check if new username already exists
+    existing_user = db.query(models.User).filter(
+        models.User.username == new_username,
+        models.User.id != user_id
+    ).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail=f"Username '{new_username}' is already taken")
+
+    # Get the user to update
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    old_username = user.username
+    user.username = new_username
+    db.commit()
+    db.refresh(user)
+
+    return {"message": f"Username updated from '{old_username}' to '{new_username}'", "user": schemas.User.model_validate(user)}
+
+
 @app.get("/api/auth/health")
 def auth_health(db: Session = Depends(get_db)):
     """Health check endpoint to verify database and user count"""
