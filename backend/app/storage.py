@@ -70,8 +70,11 @@ def upload_file(
     """
 
     if is_cloud_storage_configured():
+        print(f"[STORAGE] Uploading {filename} to cloud storage (folder: {folder})")
         return _upload_to_cloud(file_data, filename, folder, content_type)
     else:
+        print(f"[STORAGE] WARNING: Cloud storage not configured. Using local filesystem (ephemeral on Render).")
+        print(f"[STORAGE] To enable persistent storage, set USE_CLOUD_STORAGE=true and configure S3/R2 credentials.")
         return _upload_to_local(file_data, filename, folder)
 
 
@@ -119,18 +122,32 @@ def _upload_to_cloud(
 
 def _upload_to_local(file_data: BinaryIO, filename: str, folder: str) -> str:
     """Upload file to local filesystem (fallback)"""
-    upload_dir = Path("uploads") / folder
-    upload_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        upload_dir = Path("uploads") / folder
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[STORAGE] Upload directory: {upload_dir.absolute()}")
 
-    file_path = upload_dir / filename
+        file_path = upload_dir / filename
 
-    with open(file_path, "wb") as f:
-        if hasattr(file_data, 'read'):
-            f.write(file_data.read())
+        with open(file_path, "wb") as f:
+            if hasattr(file_data, 'read'):
+                content = file_data.read()
+                f.write(content)
+                print(f"[STORAGE] Wrote {len(content)} bytes to {file_path}")
+            else:
+                f.write(file_data)
+                print(f"[STORAGE] Wrote data to {file_path}")
+
+        # Verify file was written
+        if file_path.exists():
+            print(f"[STORAGE] File saved successfully: {file_path} ({file_path.stat().st_size} bytes)")
         else:
-            f.write(file_data)
+            print(f"[STORAGE] WARNING: File not found after write: {file_path}")
 
-    return str(file_path)
+        return str(file_path)
+    except Exception as e:
+        print(f"[STORAGE] ERROR writing to local filesystem: {e}")
+        raise Exception(f"Failed to save file locally: {str(e)}")
 
 
 def delete_file(file_path_or_url: str) -> bool:

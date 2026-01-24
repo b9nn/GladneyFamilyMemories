@@ -320,6 +320,8 @@ async def upload_background(
     db: Session = Depends(get_db)
 ):
     """Upload a background image (admin only)"""
+    print(f"[BACKGROUND] Starting upload for file: {file.filename}, type: {file.content_type}")
+
     # Validate file type
     if not file.content_type or not file.content_type.startswith('image/'):
         raise HTTPException(status_code=400, detail="Only image files are allowed")
@@ -328,32 +330,41 @@ async def upload_background(
     file_extension = file.filename.split('.')[-1] if '.' in file.filename else 'jpg'
     unique_filename = f"bg_{uuid.uuid4()}.{file_extension}"
 
-    # Read file content
-    file_content = await file.read()
+    try:
+        # Read file content
+        file_content = await file.read()
+        print(f"[BACKGROUND] Read {len(file_content)} bytes from uploaded file")
 
-    # Upload to cloud storage or local filesystem
-    file_url = storage.upload_file(
-        io.BytesIO(file_content),
-        unique_filename,
-        "photos",
-        file.content_type
-    )
+        # Upload to cloud storage or local filesystem
+        file_url = storage.upload_file(
+            io.BytesIO(file_content),
+            unique_filename,
+            "photos",
+            file.content_type
+        )
+        print(f"[BACKGROUND] File saved, URL/path: {file_url}")
 
-    # Deactivate all existing backgrounds
-    db.query(models.BackgroundImage).update({"is_active": False})
+        # Deactivate all existing backgrounds
+        db.query(models.BackgroundImage).update({"is_active": False})
 
-    # Create new background record
-    bg_image = models.BackgroundImage(
-        filename=unique_filename,
-        file_path=file_url,
-        uploaded_by_id=current_admin.id,
-        is_active=True
-    )
-    db.add(bg_image)
-    db.commit()
-    db.refresh(bg_image)
+        # Create new background record
+        bg_image = models.BackgroundImage(
+            filename=unique_filename,
+            file_path=file_url,
+            uploaded_by_id=current_admin.id,
+            is_active=True
+        )
+        db.add(bg_image)
+        db.commit()
+        db.refresh(bg_image)
 
-    return bg_image
+        print(f"[BACKGROUND] Background image created with id: {bg_image.id}")
+        return bg_image
+    except Exception as e:
+        print(f"[BACKGROUND] ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to upload background image: {str(e)}")
 
 
 @app.get("/api/background")
