@@ -1097,99 +1097,108 @@ def upload_photo(
     import io
     from datetime import datetime
 
-    # Get file extension and check if it's HEIC
-    file_extension = Path(file.filename).suffix.lower()
-    is_heic = file_extension in ['.heic', '.heif']
+    print(f"[PHOTO UPLOAD] Starting upload for file: {file.filename}, type: {file.content_type}")
 
-    # Variable to store extracted photo date
-    photo_taken_at = None
+    try:
+        # Get file extension and check if it's HEIC
+        file_extension = Path(file.filename).suffix.lower()
+        is_heic = file_extension in ['.heic', '.heif']
 
-    # If HEIC, convert to JPEG
-    if is_heic:
-        from pillow_heif import register_heif_opener
+        # Variable to store extracted photo date
+        photo_taken_at = None
 
-        # Register HEIF opener with Pillow
-        register_heif_opener()
+        # If HEIC, convert to JPEG
+        if is_heic:
+            from pillow_heif import register_heif_opener
 
-        # Read the uploaded HEIC file
-        file_content = file.file.read()
+            # Register HEIF opener with Pillow
+            register_heif_opener()
 
-        # Open with Pillow and convert to JPEG
-        img = Image.open(io.BytesIO(file_content))
+            # Read the uploaded HEIC file
+            file_content = file.file.read()
 
-        # Extract EXIF data before conversion
-        try:
-            exif = img.getexif()
-            if exif:
-                # EXIF tag 36867 is DateTimeOriginal (when photo was taken)
-                # EXIF tag 306 is DateTime (when photo was last modified)
-                date_taken = exif.get(36867) or exif.get(306)
-                if date_taken:
-                    # Parse EXIF date format: "YYYY:MM:DD HH:MM:SS"
-                    photo_taken_at = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
-                    print(f"[UPLOAD PHOTO] Extracted EXIF date: {photo_taken_at}")
-        except Exception as e:
-            print(f"[UPLOAD PHOTO] Could not extract EXIF date: {str(e)}")
-
-        # Convert to RGB if necessary (HEIC can have different color modes)
-        if img.mode not in ('RGB', 'L'):
-            img = img.convert('RGB')
-
-        # Save as JPEG
-        file_extension = '.jpg'
-        unique_filename = f"{uuid.uuid4()}{file_extension}"
-
-        # Save to BytesIO buffer for cloud upload
-        img_buffer = io.BytesIO()
-        img.save(img_buffer, 'JPEG', quality=95)
-        img_buffer.seek(0)
-
-        # Upload to cloud storage or local
-        file_url = storage.upload_file(img_buffer, unique_filename, "photos", "image/jpeg")
-        print(f"[UPLOAD PHOTO] Converted HEIC to JPEG: {unique_filename}")
-    else:
-        # Save file normally for non-HEIC files
-        unique_filename = f"{uuid.uuid4()}{file_extension}"
-
-        # Read file content to extract EXIF
-        file_content = file.file.read()
-
-        # Try to extract EXIF data from the image
-        try:
+            # Open with Pillow and convert to JPEG
             img = Image.open(io.BytesIO(file_content))
-            exif = img.getexif()
-            if exif:
-                # EXIF tag 36867 is DateTimeOriginal (when photo was taken)
-                # EXIF tag 306 is DateTime (when photo was last modified)
-                date_taken = exif.get(36867) or exif.get(306)
-                if date_taken:
-                    # Parse EXIF date format: "YYYY:MM:DD HH:MM:SS"
-                    photo_taken_at = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
-                    print(f"[UPLOAD PHOTO] Extracted EXIF date: {photo_taken_at}")
-        except Exception as e:
-            print(f"[UPLOAD PHOTO] Could not extract EXIF date: {str(e)}")
 
-        # Upload to cloud storage or local
-        file_url = storage.upload_file(
-            io.BytesIO(file_content),
-            unique_filename,
-            "photos",
-            file.content_type
+            # Extract EXIF data before conversion
+            try:
+                exif = img.getexif()
+                if exif:
+                    # EXIF tag 36867 is DateTimeOriginal (when photo was taken)
+                    # EXIF tag 306 is DateTime (when photo was last modified)
+                    date_taken = exif.get(36867) or exif.get(306)
+                    if date_taken:
+                        # Parse EXIF date format: "YYYY:MM:DD HH:MM:SS"
+                        photo_taken_at = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
+                        print(f"[PHOTO UPLOAD] Extracted EXIF date: {photo_taken_at}")
+            except Exception as e:
+                print(f"[PHOTO UPLOAD] Could not extract EXIF date: {str(e)}")
+
+            # Convert to RGB if necessary (HEIC can have different color modes)
+            if img.mode not in ('RGB', 'L'):
+                img = img.convert('RGB')
+
+            # Save as JPEG
+            file_extension = '.jpg'
+            unique_filename = f"{uuid.uuid4()}{file_extension}"
+
+            # Save to BytesIO buffer for cloud upload
+            img_buffer = io.BytesIO()
+            img.save(img_buffer, 'JPEG', quality=95)
+            img_buffer.seek(0)
+
+            # Upload to cloud storage or local
+            file_url = storage.upload_file(img_buffer, unique_filename, "photos", "image/jpeg")
+            print(f"[PHOTO UPLOAD] Converted HEIC to JPEG: {unique_filename}")
+        else:
+            # Save file normally for non-HEIC files
+            unique_filename = f"{uuid.uuid4()}{file_extension}"
+
+            # Read file content to extract EXIF
+            file_content = file.file.read()
+
+            # Try to extract EXIF data from the image
+            try:
+                img = Image.open(io.BytesIO(file_content))
+                exif = img.getexif()
+                if exif:
+                    # EXIF tag 36867 is DateTimeOriginal (when photo was taken)
+                    # EXIF tag 306 is DateTime (when photo was last modified)
+                    date_taken = exif.get(36867) or exif.get(306)
+                    if date_taken:
+                        # Parse EXIF date format: "YYYY:MM:DD HH:MM:SS"
+                        photo_taken_at = datetime.strptime(date_taken, "%Y:%m:%d %H:%M:%S")
+                        print(f"[PHOTO UPLOAD] Extracted EXIF date: {photo_taken_at}")
+            except Exception as e:
+                print(f"[PHOTO UPLOAD] Could not extract EXIF date: {str(e)}")
+
+            # Upload to cloud storage or local
+            file_url = storage.upload_file(
+                io.BytesIO(file_content),
+                unique_filename,
+                "photos",
+                file.content_type
+            )
+
+        # Create database record
+        db_photo = models.Photo(
+            filename=unique_filename,
+            file_path=file_url,  # Store URL instead of local path
+            title=title or file.filename,
+            description=description,
+            uploaded_by_id=current_user.id,
+            taken_at=photo_taken_at,
         )
-
-    # Create database record
-    db_photo = models.Photo(
-        filename=unique_filename,
-        file_path=file_url,  # Store URL instead of local path
-        title=title or file.filename,
-        description=description,
-        uploaded_by_id=current_user.id,
-        taken_at=photo_taken_at,
-    )
-    db.add(db_photo)
-    db.commit()
-    db.refresh(db_photo)
-    return db_photo
+        db.add(db_photo)
+        db.commit()
+        db.refresh(db_photo)
+        print(f"[PHOTO UPLOAD] Photo uploaded successfully: {db_photo.id}")
+        return db_photo
+    except Exception as e:
+        print(f"[PHOTO UPLOAD] ERROR: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Failed to upload photo: {str(e)}")
 
 
 @app.get("/api/photos", response_model=List[schemas.Photo])
