@@ -11,10 +11,14 @@ services:
       # Build frontend (Node.js is already available on Render)
       cd frontend && npm install && npm run build && cd ..
     startCommand: "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    disk:
+      name: data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: SECRET_KEY
         generateValue: true
       - key: DATABASE_URL
-        sync: false
+        value: sqlite:////data/tag_diary.db
       - key: PYTHON_VERSION
         value: 3.11.0
