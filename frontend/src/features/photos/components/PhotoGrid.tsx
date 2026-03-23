@@ -4,9 +4,10 @@ interface PhotoGridProps {
   photos: Photo[];
   onDelete: (id: number) => void;
   onSelect?: (photo: Photo) => void;
+  deleteLabel?: string;
 }
 
-export function PhotoGrid({ photos, onDelete, onSelect }: PhotoGridProps) {
+export function PhotoGrid({ photos, onDelete, onSelect, deleteLabel = 'Delete' }: PhotoGridProps) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
       {photos.map((photo) => (
@@ -33,7 +34,7 @@ export function PhotoGrid({ photos, onDelete, onSelect }: PhotoGridProps) {
                 onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}
                 className="ml-auto rounded bg-black/60 px-2 py-0.5 text-xs text-white hover:bg-red-500 transition-colors"
               >
-                Delete
+                {deleteLabel}
               </button>
             </div>
           </div>

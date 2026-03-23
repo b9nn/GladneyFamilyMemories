@@ -7,7 +7,7 @@ export const photosApi = {
     form.append('file', file)
     if (title) form.append('title', title)
     if (description) form.append('description', description)
-    return client.post<Photo>('/api/photos', form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+    return client.post<Photo>('/api/photos', form).then(r => r.data)
   },
   update: (id: number, data: PhotoUpdate) => client.put<Photo>(`/api/photos/${id}`, data).then(r => r.data),
   delete: (id: number) => client.delete(`/api/photos/${id}`).then(r => r.data),

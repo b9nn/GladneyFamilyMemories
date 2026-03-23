@@ -8,7 +8,7 @@ export const filesApi = {
     if (title) form.append('title', title)
     if (description) form.append('description', description)
     form.append('source', source)
-    return client.post<FileRecord>('/api/files', form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
+    return client.post<FileRecord>('/api/files', form).then(r => r.data)
   },
   delete: (id: number) => client.delete(`/api/files/${id}`).then(r => r.data),
 }
