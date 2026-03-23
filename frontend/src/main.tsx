@@ -6,6 +6,10 @@ import App from './App.tsx';
 
 initTheme();
 
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  navigator.serviceWorker.register('/sw.js');
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
