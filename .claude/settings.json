@@ -1,0 +1,77 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-postgres", "REPLACE_WITH_DATABASE_URL"],
+      "note": "Replace with your Render PostgreSQL connection string (or local sqlite:// for dev)"
+    },
+    "github": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-github"],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "REPLACE_WITH_GITHUB_PAT"
+      },
+      "note": "Replace with a GitHub PAT (repo + issues scope)"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["-y", "@playwright/mcp@latest"],
+      "note": "Browser automation — test UI flows, take screenshots, debug uploads visually"
+    },
+    "cloudflare": {
+      "command": "npx",
+      "args": ["-y", "@cloudflare/mcp-server-cloudflare"],
+      "note": "Inspect R2 bucket contents, debug upload failures, manage DNS — run 'wrangler login' first"
+    }
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE='{{tool_input.file_path}}'; if [[ \"$FILE\" == *frontend* ]] && ([[ \"$FILE\" == *.ts ]] || [[ \"$FILE\" == *.tsx ]]); then cd /Users/tomgladney1/familytree/GladneyFamilyTree/frontend && npx tsc --noEmit 2>&1 | tail -8; fi || true"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "osascript -e 'display notification \"Claude finished\" with title \"Claude Code\" with subtitle \"Gladney Family Tree\"' 2>/dev/null || true"
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm ci)",
+      "Bash(npx *)",
+      "Bash(cd frontend && *)",
+      "Bash(cd backend && *)",
+      "Bash(pip install *)",
+      "Bash(alembic *)",
+      "Bash(pytest *)",
+      "Bash(git log *)",
+      "Bash(git diff *)",
+      "Bash(git status)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)",
+      "Bash(git push)",
+      "Bash(git push origin *)",
+      "Bash(sqlite3 *)",
+      "Bash(curl http://localhost*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(DROP TABLE*)"
+    ]
+  },
+  "includeCoAuthoredBy": true
+}
