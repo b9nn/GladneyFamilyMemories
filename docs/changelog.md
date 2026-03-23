@@ -8,13 +8,56 @@ Versioning: Milestone-based (M1 = v0.1.0, M2 = v0.2.0, etc.)
 
 ## [Unreleased]
 
+---
+
+## [v0.5.0] — M5: Deployment — 2026-03-23
+
+### Added
+- `render.yaml` — full Render deployment spec: web service + PostgreSQL database + 10 GB persistent disk
+- `.github/workflows/ci.yml` — GitHub Actions CI: frontend typecheck + lint + build, backend import check + pytest
+- `.github/workflows/deploy.yml` — GitHub Actions auto-deploy to Render on push to `main` via deploy hook
+- FastAPI SPA fallback: serves `frontend/dist/` in production, catch-all returns `index.html` for client-side routing
+- Root `.gitignore` — covers Python, Node, macOS, IDE artifacts
+
+## [v0.4.0] — M4: Polish — 2026-03-23
+
+### Added
+- Toast notification system (Zustand store, auto-dismiss 4s, success/error/info)
+- Global mutation error handler in QueryClient — all failed mutations show an error toast
+- Error boundary wrapping all page routes with "Try again" reset
+- Mobile-responsive Navbar with animated hamburger menu
+- PWA: `manifest.json` + `sw.js` service worker (network-first API, cache-first assets)
+- Code splitting: all 12 page components lazy-loaded via `React.lazy` + `Suspense`
+
+## [v0.3.0] — M3: Advanced Features — 2026-03-23
+
+### Added
+- Admin panel: user management (toggle admin/active), invite code generator + copy, background image upload
+- Family Tree: interactive ReactFlow canvas with dagre auto-layout, add/edit/delete members, color-coded relationship edges
+- Timeline: chronological feed of all content types with type-filter chips
+- Search: live full-text search (≥2 chars), results with type icons + snippets
+
+## [v0.2.0] — M2: Core Pages — 2026-03-23
+
+### Added
+- Dashboard: stat cards (counts for all content types) + background image display
+- Vignettes: TipTap v3 rich-text editor, CRUD, HTML preview cards
+- Photos: drag-and-drop + click upload (HEIC via backend conversion), photo grid, full-screen lightbox
+- Audio: in-browser MediaRecorder recording + file upload, audio player, duration display
+- Files: file upload, download links, file-type icons
+
+## [v0.1.0] — M1: Foundation — 2026-03-23
+
 ### Added
 - `CLAUDE.md` — project conventions, stack, dev commands, gotchas
 - `docs/project-spec.md` — vision, milestones, success criteria
 - `docs/architecture.md` — system design, DB schema, deployment topology
-- `docs/changelog.md` — this file
 - `.claude/settings.json` — MCP servers (postgres, github), hooks, permissions
-- `.claude/commands/` — custom slash commands (migration, typecheck, deploy-frontend, smoke-test)
+- `.claude/commands/` — 7 custom slash commands
+- Backend: FastAPI + SQLAlchemy 2.0, 17 models, full CRUD API, JWT auth, dual-mode storage (local/R2), HEIC conversion, Alembic initial migration
+- Frontend: React 18 + TypeScript strict + Tailwind v4 + TanStack Query v5 + Zustand v5 + React Router v6
+- Auth flow: login, register, change password, protected routes, Zustand auth store
+- All 9 feature placeholder pages + shared Layout, Navbar, PageHeader, EmptyState
 
 ---
 

@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File as F, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
@@ -634,3 +635,18 @@ def timeline(
             items.append(TimelineItem(content_type="file", id=f.id, title=f.title or f.filename, created_at=f.created_at))
     items.sort(key=lambda x: x.created_at, reverse=True)
     return items[offset: offset + limit]
+
+
+# ── SPA static file serving (production only) ─────────────────────────────────
+
+_FRONTEND_DIST = Path(__file__).parent.parent.parent / "frontend" / "dist"
+
+if _FRONTEND_DIST.exists():
+    app.mount("/assets", StaticFiles(directory=str(_FRONTEND_DIST / "assets")), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    def spa_fallback(full_path: str):
+        file = _FRONTEND_DIST / full_path
+        if file.exists() and file.is_file():
+            return FileResponse(str(file))
+        return FileResponse(str(_FRONTEND_DIST / "index.html"))
