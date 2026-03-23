@@ -10,5 +10,6 @@ export const audioApi = {
     if (durationSeconds !== undefined) form.append('duration_seconds', String(durationSeconds))
     return client.post<AudioRecording>('/api/audio', form, { headers: { 'Content-Type': 'multipart/form-data' } }).then(r => r.data)
   },
+  update: (id: number, data: { title?: string; description?: string }) => client.put<AudioRecording>(`/api/audio/${id}`, data).then(r => r.data),
   delete: (id: number) => client.delete(`/api/audio/${id}`).then(r => r.data),
 }
