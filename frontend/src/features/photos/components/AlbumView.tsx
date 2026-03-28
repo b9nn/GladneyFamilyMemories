@@ -1,8 +1,9 @@
 import type { Album, Photo } from '@/types/api';
 import { PhotoGrid } from './PhotoGrid';
-import { useAlbumPhotos, useRemovePhotoFromAlbum, useAddPhotoToAlbum } from '../hooks/useAlbums';
+import { useAlbumPhotos, useRemovePhotoFromAlbum, useAddPhotoToAlbum, useSetAlbumCover } from '../hooks/useAlbums';
 import { usePhotos } from '../hooks/usePhotos';
 import { useState } from 'react';
+import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 
 interface AlbumViewProps {
   album: Album;
@@ -11,10 +12,12 @@ interface AlbumViewProps {
 }
 
 export function AlbumView({ album, onBack, onLightbox }: AlbumViewProps) {
+  const isAdmin = useIsAdmin();
   const { data: albumPhotos, isLoading } = useAlbumPhotos(album.id);
   const { data: allPhotos } = usePhotos();
   const removePhoto = useRemovePhotoFromAlbum();
   const addPhoto = useAddPhotoToAlbum();
+  const setCover = useSetAlbumCover();
   const [showAddPanel, setShowAddPanel] = useState(false);
 
   const albumPhotoIds = new Set(albumPhotos?.map((p) => p.id) ?? []);
@@ -43,14 +46,16 @@ export function AlbumView({ album, onBack, onLightbox }: AlbumViewProps) {
         <span className="text-sm text-muted-foreground ml-1">
           ({album.photo_count} {album.photo_count === 1 ? 'photo' : 'photos'})
         </span>
-        <div className="ml-auto">
-          <button
-            onClick={() => setShowAddPanel((v) => !v)}
-            className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
-          >
-            {showAddPanel ? 'Done adding' : 'Add photos'}
-          </button>
-        </div>
+        {isAdmin && (
+          <div className="ml-auto">
+            <button
+              onClick={() => setShowAddPanel((v) => !v)}
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+            >
+              {showAddPanel ? 'Done adding' : 'Add photos'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Add photos panel */}
@@ -96,8 +101,10 @@ export function AlbumView({ album, onBack, onLightbox }: AlbumViewProps) {
       ) : (
         <PhotoGrid
           photos={albumPhotos}
+          isAdmin={isAdmin}
           onDelete={handleRemove}
           onSelect={onLightbox}
+          onSetCover={isAdmin ? (photo) => setCover.mutate({ albumId: album.id, photoId: photo.id }) : undefined}
           deleteLabel="Remove"
         />
       )}

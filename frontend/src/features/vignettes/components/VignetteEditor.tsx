@@ -1,9 +1,27 @@
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import { Mic, MicOff } from 'lucide-react';
 import { cn } from '@/lib/utils/utils';
+
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionInstance extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onerror: ((event: Event) => void) | null;
+  onend: (() => void) | null;
+}
 
 interface VignetteEditorProps {
   content: string;
@@ -36,6 +54,11 @@ function ToolbarButton({ onClick, active, children, title }: ToolbarButtonProps)
   );
 }
 
+type WindowWithSpeech = Window & {
+  SpeechRecognition?: new () => SpeechRecognitionInstance;
+  webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
+};
+
 export function VignetteEditor({ content, onChange, placeholder = 'Start writing…' }: VignetteEditorProps) {
   const editor = useEditor({
     extensions: [
@@ -49,6 +72,46 @@ export function VignetteEditor({ content, onChange, placeholder = 'Start writing
       onChange(JSON.stringify(ed.getJSON()));
     },
   });
+
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+
+  const SpeechRecognitionAPI = (window as WindowWithSpeech).SpeechRecognition
+    ?? (window as WindowWithSpeech).webkitSpeechRecognition;
+
+  const toggleDictation = useCallback(() => {
+    if (!SpeechRecognitionAPI) return;
+
+    if (isListening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+
+    const recognition = new SpeechRecognitionAPI();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          const transcript = event.results[i][0].transcript;
+          editor?.chain().focus().insertContent(transcript + ' ').run();
+        }
+      }
+    };
+
+    recognition.onerror = () => setIsListening(false);
+    recognition.onend = () => setIsListening(false);
+
+    recognitionRef.current = recognition;
+    recognition.start();
+    setIsListening(true);
+  }, [isListening, editor, SpeechRecognitionAPI]);
+
+  useEffect(() => {
+    return () => { recognitionRef.current?.stop(); };
+  }, []);
 
   if (!editor) return null;
 
@@ -82,6 +145,25 @@ export function VignetteEditor({ content, onChange, placeholder = 'Start writing
         <ToolbarButton onClick={() => editor.chain().focus().toggleBlockquote().run()} active={editor.isActive('blockquote')} title="Blockquote">
           ❝
         </ToolbarButton>
+        {SpeechRecognitionAPI && (
+          <>
+            <span className="w-px h-5 bg-border self-center mx-1" />
+            <button
+              type="button"
+              onMouseDown={(e) => { e.preventDefault(); toggleDictation(); }}
+              title={isListening ? 'Stop dictation' : 'Start dictation'}
+              className={cn(
+                'px-2 py-1 rounded text-sm font-medium transition-colors flex items-center gap-1',
+                isListening
+                  ? 'bg-red-500 text-white hover:bg-red-600'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-accent'
+              )}
+            >
+              {isListening ? <MicOff size={14} /> : <Mic size={14} />}
+              {isListening && <span className="text-xs">Listening…</span>}
+            </button>
+          </>
+        )}
       </div>
       <EditorContent
         editor={editor}

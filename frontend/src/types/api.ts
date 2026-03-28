@@ -7,7 +7,7 @@ export interface UserRegister { username: string; password: string; email?: stri
 export interface UserLogin { username: string; password: string }
 export interface PasswordChange { current_password: string; new_password: string }
 
-export interface InviteCode { id: number; code: string; email: string | null; used_by_id: number | null; expires_at: string | null; created_at: string }
+export interface InviteCode { id: number; code: string; email: string | null; used_by_id: number | null; expires_at: string | null; created_at: string; email_sent?: boolean | null }
 export interface InviteCodeCreate { email?: string; expires_at?: string }
 
 export interface Vignette { id: number; title: string; content: string | null; author_id: number; sort_order: number; created_at: string; updated_at: string }
@@ -41,3 +41,6 @@ export interface TimelineItem { content_type: string; id: number; title: string;
 
 export interface DashboardStats { vignettes: number; photos: number; audio_recordings: number; files: number; family_members: number }
 export interface UserAdminUpdate { is_active?: boolean; is_admin?: boolean; full_name?: string; email?: string }
+
+export interface SmtpConfig { smtp_host: string; smtp_port: number; smtp_user: string; smtp_password: string; from_email: string; from_name: string; admin_email: string; site_url: string }
+export interface SmtpConfigResponse { smtp_host: string; smtp_port: number; smtp_user: string; from_email: string; from_name: string; admin_email: string; site_url: string; configured: boolean }

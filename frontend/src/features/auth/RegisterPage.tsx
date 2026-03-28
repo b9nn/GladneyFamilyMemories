@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from './stores/auth-store';
 import { authApi } from '@/lib/api/auth';
 
 export function RegisterPage() {
   const navigate = useNavigate();
   const { setAuth } = useAuthStore();
+  const [searchParams] = useSearchParams();
 
   const [form, setForm] = useState({
     username: '',
     password: '',
     full_name: '',
-    invite_code: '',
+    invite_code: searchParams.get('code') ?? '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);

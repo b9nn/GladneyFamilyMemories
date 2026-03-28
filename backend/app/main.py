@@ -69,7 +69,7 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
     invite.used_by_id = user.id
     db.commit()
     db.refresh(user)
-    email_mod.notify_admin_new_registration(user.username, user.email or "")
+    email_mod.notify_admin_new_registration(user.username, user.email or "", db)
     return TokenResponse(access_token=create_access_token({"sub": str(user.id)}), user=UserResponse.model_validate(user))
 
 
@@ -150,6 +150,18 @@ def create_invite_code(payload: InviteCodeCreate, db: Session = Depends(get_db),
     return code
 
 
+@app.post("/api/admin/invite-codes/send", response_model=InviteCodeResponse)
+def send_invite(payload: InviteEmailRequest, db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
+    code = models.InviteCode(code=secrets.token_urlsafe(16), email=payload.email, created_by_id=cu.id)
+    db.add(code)
+    db.commit()
+    db.refresh(code)
+    sent = email_mod.send_invite_email(payload.email, payload.name, code.code, db)
+    result = InviteCodeResponse.model_validate(code)
+    result.email_sent = sent
+    return result
+
+
 @app.delete("/api/admin/invite-codes/{code_id}")
 def delete_invite_code(code_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
     code = db.query(models.InviteCode).filter(models.InviteCode.id == code_id).first()
@@ -171,6 +183,75 @@ async def upload_background(file: UploadFile = F(...), db: Session = Depends(get
     db.add(bg)
     db.commit()
     return {"url": url, "message": "Background updated"}
+
+
+# ── Admin: SMTP Config ────────────────────────────────────────────────────────
+
+@app.get("/api/admin/smtp-config", response_model=SmtpConfigResponse)
+def get_smtp_config_endpoint(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    cfg = email_mod.get_smtp_config(db)
+    return SmtpConfigResponse(
+        smtp_host=cfg['smtp_host'],
+        smtp_port=cfg['smtp_port'],
+        smtp_user=cfg['smtp_user'],
+        from_email=cfg['from_email'],
+        from_name=cfg['from_name'],
+        admin_email=cfg['admin_email'],
+        site_url=cfg['site_url'],
+        configured=bool(cfg['smtp_host'] and cfg['smtp_user']),
+    )
+
+
+@app.put("/api/admin/smtp-config", response_model=SmtpConfigResponse)
+def update_smtp_config(payload: SmtpConfig, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    fields = {
+        'smtp_host': payload.smtp_host,
+        'smtp_port': str(payload.smtp_port),
+        'smtp_user': payload.smtp_user,
+        'from_email': payload.from_email,
+        'from_name': payload.from_name,
+        'admin_email': payload.admin_email,
+        'site_url': payload.site_url,
+    }
+    if payload.smtp_password:
+        fields['smtp_password'] = payload.smtp_password
+    for key, value in fields.items():
+        setting = db.query(models.SiteSetting).filter(models.SiteSetting.key == key).first()
+        if setting:
+            setting.value = value
+        else:
+            db.add(models.SiteSetting(key=key, value=value))
+    db.commit()
+    cfg = email_mod.get_smtp_config(db)
+    return SmtpConfigResponse(
+        smtp_host=cfg['smtp_host'],
+        smtp_port=cfg['smtp_port'],
+        smtp_user=cfg['smtp_user'],
+        from_email=cfg['from_email'],
+        from_name=cfg['from_name'],
+        admin_email=cfg['admin_email'],
+        site_url=cfg['site_url'],
+        configured=bool(cfg['smtp_host'] and cfg['smtp_user']),
+    )
+
+
+@app.post("/api/admin/smtp-config/test")
+def test_smtp_config(db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
+    cfg = email_mod.get_smtp_config(db)
+    if not cfg['smtp_host'] or not cfg['smtp_user']:
+        raise HTTPException(400, "SMTP not configured")
+    test_to = cfg['admin_email'] or cu.email
+    if not test_to:
+        raise HTTPException(400, "No recipient email — set Admin Email in SMTP config")
+    sent = email_mod.send_email(
+        test_to,
+        "Test email from Gladney Family Tree",
+        "<h2>SMTP test</h2><p>If you received this, your SMTP configuration is working correctly.</p>",
+        db,
+    )
+    if not sent:
+        raise HTTPException(500, "Failed to send test email — check server logs")
+    return {"message": f"Test email sent to {test_to}"}
 
 
 # ── Dashboard ─────────────────────────────────────────────────────────────────
@@ -366,6 +447,23 @@ def add_to_album(aid: int, pid: int, db: Session = Depends(get_db), _: models.Us
         db.add(models.AlbumPhoto(album_id=aid, photo_id=pid))
         db.commit()
     return {"message": "Added"}
+
+
+@app.put("/api/albums/{aid}/cover/{pid}", response_model=AlbumResponse)
+def set_album_cover(aid: int, pid: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    album = db.query(models.Album).filter(models.Album.id == aid).first()
+    if not album:
+        raise HTTPException(404, "Album not found")
+    photo = db.query(models.Photo).filter(models.Photo.id == pid).first()
+    if not photo:
+        raise HTTPException(404, "Photo not found")
+    url = get_file_url(photo.file_path)
+    album.background_image = url
+    db.commit()
+    db.refresh(album)
+    result = AlbumResponse.model_validate(album)
+    result.photo_count = len(album.album_photos)
+    return result
 
 
 @app.delete("/api/albums/{aid}/photos/{pid}")

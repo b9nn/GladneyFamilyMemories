@@ -219,3 +219,10 @@ class ContentTag(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     tag = relationship("Tag", back_populates="content_tags")
+
+
+class SiteSetting(Base):
+    __tablename__ = "site_settings"
+    key = Column(String, primary_key=True)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

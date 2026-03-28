@@ -3,6 +3,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { MemberForm } from './components/MemberForm';
 import { TreeCanvas } from './components/TreeCanvas';
+import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import {
   useFamilyMembers,
   useFamilyRelationships,
@@ -23,6 +24,7 @@ export function FamilyTreePage() {
   const createRelationship = useCreateRelationship();
   const deleteRelationship = useDeleteRelationship();
 
+  const isAdmin = useIsAdmin();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingMember, setEditingMember] = useState<FamilyMember | null>(null);
   const [selectedMember, setSelectedMember] = useState<FamilyMember | null>(null);
@@ -107,14 +109,14 @@ export function FamilyTreePage() {
       <PageHeader
         title="Family Tree"
         description="Explore family connections"
-        action={
+        action={isAdmin ? (
           <button
             onClick={() => setShowAddForm(true)}
             className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
           >
             Add member
           </button>
-        }
+        ) : undefined}
       />
 
       {isLoading ? (
@@ -123,14 +125,14 @@ export function FamilyTreePage() {
         <EmptyState
           title="No family members yet"
           description="Add your first family member to start building the tree."
-          action={
+          action={isAdmin ? (
             <button
               onClick={() => setShowAddForm(true)}
               className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
             >
               Add member
             </button>
-          }
+          ) : undefined}
         />
       ) : (
         <div className="space-y-6">
@@ -158,18 +160,22 @@ export function FamilyTreePage() {
                   )}
                 </div>
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => setEditingMember(selectedMember)}
-                    className="text-sm text-muted-foreground hover:text-foreground"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteMember(selectedMember.id)}
-                    className="text-sm text-muted-foreground hover:text-destructive"
-                  >
-                    Delete
-                  </button>
+                  {isAdmin && (
+                    <>
+                      <button
+                        onClick={() => setEditingMember(selectedMember)}
+                        className="text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleDeleteMember(selectedMember.id)}
+                        className="text-sm text-muted-foreground hover:text-destructive"
+                      >
+                        Delete
+                      </button>
+                    </>
+                  )}
                   <button
                     onClick={() => setSelectedMember(null)}
                     className="text-sm text-muted-foreground hover:text-foreground"
@@ -191,12 +197,14 @@ export function FamilyTreePage() {
                           <span className="text-muted-foreground">
                             {rel.relationship_type.replace('_', ' ')} → {other?.first_name} {other?.last_name}
                           </span>
-                          <button
-                            onClick={() => deleteRelationship.mutate(rel.id)}
-                            className="text-xs text-muted-foreground hover:text-destructive"
-                          >
-                            Remove
-                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => deleteRelationship.mutate(rel.id)}
+                              className="text-xs text-muted-foreground hover:text-destructive"
+                            >
+                              Remove
+                            </button>
+                          )}
                         </div>
                       );
                     })}
@@ -204,44 +212,46 @@ export function FamilyTreePage() {
                 </div>
               )}
 
-              <div>
-                <p className="text-sm font-medium text-foreground mb-2">Add relationship</p>
-                {error && (
-                  <div className="mb-2 rounded-md bg-destructive/10 border border-destructive/20 p-2 text-xs text-destructive">{error}</div>
-                )}
-                <form onSubmit={handleAddRelationship} className="flex gap-2">
-                  <select
-                    value={relForm.person_b_id}
-                    onChange={(e) => setRelForm((prev) => ({ ...prev, person_b_id: e.target.value }))}
-                    className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="">Select person…</option>
-                    {members
-                      .filter((m) => m.id !== selectedMember.id)
-                      .map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.first_name} {m.last_name}
-                        </option>
-                      ))}
-                  </select>
-                  <select
-                    value={relForm.relationship_type}
-                    onChange={(e) => setRelForm((prev) => ({ ...prev, relationship_type: e.target.value as 'parent_child' | 'spouse' | 'sibling' }))}
-                    className="rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <option value="parent_child">Parent → Child</option>
-                    <option value="spouse">Spouse</option>
-                    <option value="sibling">Sibling</option>
-                  </select>
-                  <button
-                    type="submit"
-                    disabled={!relForm.person_b_id}
-                    className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    Add
-                  </button>
-                </form>
-              </div>
+              {isAdmin && (
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-2">Add relationship</p>
+                  {error && (
+                    <div className="mb-2 rounded-md bg-destructive/10 border border-destructive/20 p-2 text-xs text-destructive">{error}</div>
+                  )}
+                  <form onSubmit={handleAddRelationship} className="flex gap-2">
+                    <select
+                      value={relForm.person_b_id}
+                      onChange={(e) => setRelForm((prev) => ({ ...prev, person_b_id: e.target.value }))}
+                      className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="">Select person…</option>
+                      {members
+                        .filter((m) => m.id !== selectedMember.id)
+                        .map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.first_name} {m.last_name}
+                          </option>
+                        ))}
+                    </select>
+                    <select
+                      value={relForm.relationship_type}
+                      onChange={(e) => setRelForm((prev) => ({ ...prev, relationship_type: e.target.value as 'parent_child' | 'spouse' | 'sibling' }))}
+                      className="rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                    >
+                      <option value="parent_child">Parent → Child</option>
+                      <option value="spouse">Spouse</option>
+                      <option value="sibling">Sibling</option>
+                    </select>
+                    <button
+                      type="submit"
+                      disabled={!relForm.person_b_id}
+                      className="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      Add
+                    </button>
+                  </form>
+                </div>
+              )}
             </div>
           )}
         </div>

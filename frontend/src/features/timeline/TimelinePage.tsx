@@ -52,7 +52,7 @@ export function TimelinePage() {
       </div>
 
       {isLoading ? (
-        <div className="space-y-4">
+        <div className="max-w-md space-y-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-20 rounded-lg border border-border bg-muted animate-pulse" />
           ))}
@@ -60,7 +60,7 @@ export function TimelinePage() {
       ) : !items?.length ? (
         <EmptyState title="Nothing here yet" description="Content you add will appear in the timeline." />
       ) : (
-        <div className="relative">
+        <div className="relative max-w-md">
           <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
           <div className="space-y-6 pl-12">
             {items.map((item) => (

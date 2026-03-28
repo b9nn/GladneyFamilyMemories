@@ -8,4 +8,5 @@ export const albumsApi = {
   getPhotos: (albumId: number) => client.get<Photo[]>(`/api/albums/${albumId}/photos`).then(r => r.data),
   addPhoto: (albumId: number, photoId: number) => client.post(`/api/albums/${albumId}/photos/${photoId}`).then(r => r.data),
   removePhoto: (albumId: number, photoId: number) => client.delete(`/api/albums/${albumId}/photos/${photoId}`).then(r => r.data),
+  setCover: (albumId: number, photoId: number) => client.put<Album>(`/api/albums/${albumId}/cover/${photoId}`).then(r => r.data),
 }

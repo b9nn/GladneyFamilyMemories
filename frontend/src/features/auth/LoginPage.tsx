@@ -34,7 +34,7 @@ export function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background">
       <div className="w-full max-w-sm space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground">Gladney Family Tree</h1>
+          <h1 className="text-2xl font-bold text-foreground">LandTG Memories</h1>
           <p className="mt-2 text-sm text-muted-foreground">Sign in to your account</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">

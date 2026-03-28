@@ -62,3 +62,12 @@ export function useRemovePhotoFromAlbum() {
     },
   });
 }
+
+export function useSetAlbumCover() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ albumId, photoId }: { albumId: number; photoId: number }) =>
+      albumsApi.setCover(albumId, photoId),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: KEY }); toast('Cover photo updated', 'success'); },
+  });
+}

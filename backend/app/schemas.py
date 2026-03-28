@@ -42,6 +42,10 @@ class InviteCodeCreate(BaseModel):
     email: Optional[str] = None
     expires_at: Optional[datetime] = None
 
+class InviteEmailRequest(BaseModel):
+    email: str
+    name: str
+
 class InviteCodeResponse(BaseModel):
     id: int
     code: str
@@ -49,6 +53,7 @@ class InviteCodeResponse(BaseModel):
     used_by_id: Optional[int] = None
     expires_at: Optional[datetime] = None
     created_at: datetime
+    email_sent: Optional[bool] = None
     model_config = {"from_attributes": True}
 
 
@@ -261,3 +266,26 @@ class DashboardStats(BaseModel):
     audio_recordings: int
     files: int
     family_members: int
+
+
+# ── SMTP ──────────────────────────────────────────────────────────────────────
+
+class SmtpConfig(BaseModel):
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""   # empty string means "leave unchanged"
+    from_email: str = ""
+    from_name: str = "Gladney Family Tree"
+    admin_email: str = ""
+    site_url: str = ""
+
+class SmtpConfigResponse(BaseModel):
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    from_email: str
+    from_name: str
+    admin_email: str
+    site_url: str
+    configured: bool

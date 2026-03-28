@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
-import { useDashboardStats, useDashboardBackground } from './hooks/useDashboard';
+import { useDashboardStats } from './hooks/useDashboard';
 
 interface StatCardProps {
   label: string;
@@ -23,25 +23,15 @@ function StatCard({ label, value, to }: StatCardProps) {
 export function DashboardPage() {
   const { user } = useAuthStore();
   const { data: stats } = useDashboardStats();
-  const { data: bg } = useDashboardBackground();
 
   const greeting = user?.full_name ?? user?.username ?? 'there';
 
   return (
     <div>
-      {bg?.url && (
-        <div className="mb-8 overflow-hidden rounded-xl">
-          <img
-            src={bg.url}
-            alt="Family background"
-            className="w-full max-h-64 object-cover"
-          />
-        </div>
-      )}
 
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-foreground">Hello, {greeting}</h1>
-        <p className="mt-1 text-muted-foreground">Welcome to the Gladney Family Tree</p>
+        <p className="mt-1 text-muted-foreground">Welcome to LandTG Memories</p>
       </div>
 
       {stats ? (

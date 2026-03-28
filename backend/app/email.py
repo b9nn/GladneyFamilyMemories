@@ -2,42 +2,86 @@ import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from typing import TYPE_CHECKING
 
-SMTP_HOST = os.getenv("SMTP_HOST", "")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = os.getenv("SMTP_USER", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-FROM_EMAIL = os.getenv("FROM_EMAIL", "noreply@mrtag.com")
-FROM_NAME = os.getenv("FROM_NAME", "Gladney Family Tree")
-SITE_URL = os.getenv("SITE_URL", "https://mrtag.com")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", SMTP_USER)
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
+
+_SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password',
+              'from_email', 'from_name', 'admin_email', 'site_url']
 
 
-def send_email(to: str, subject: str, html: str) -> bool:
-    if not SMTP_HOST or not SMTP_USER:
+def get_smtp_config(db: 'Session | None' = None) -> dict:
+    """Return effective SMTP config: DB values override env vars."""
+    config: dict = {
+        'smtp_host':     os.getenv("SMTP_HOST", ""),
+        'smtp_port':     int(os.getenv("SMTP_PORT", "587")),
+        'smtp_user':     os.getenv("SMTP_USER", ""),
+        'smtp_password': os.getenv("SMTP_PASSWORD", ""),
+        'from_email':    os.getenv("FROM_EMAIL", "noreply@mrtag.com"),
+        'from_name':     os.getenv("FROM_NAME", "Gladney Family Tree"),
+        'site_url':      os.getenv("SITE_URL", "https://mrtag.com"),
+        'admin_email':   os.getenv("ADMIN_EMAIL", os.getenv("SMTP_USER", "")),
+    }
+    if db is not None:
+        from .models import SiteSetting
+        rows = db.query(SiteSetting).filter(SiteSetting.key.in_(_SMTP_KEYS)).all()
+        for row in rows:
+            if row.value:
+                config[row.key] = int(row.value) if row.key == 'smtp_port' else row.value
+    return config
+
+
+def send_email(to: str, subject: str, html: str, db: 'Session | None' = None) -> bool:
+    cfg = get_smtp_config(db)
+    if not cfg['smtp_host'] or not cfg['smtp_user']:
         print(f"[EMAIL] Not configured. Would send to {to}: {subject}")
         return False
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
-        msg["From"] = f"{FROM_NAME} <{FROM_EMAIL}>"
+        msg["From"] = f"{cfg['from_name']} <{cfg['from_email']}>"
         msg["To"] = to
         msg.attach(MIMEText(html, "html"))
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as s:
+        with smtplib.SMTP(cfg['smtp_host'], cfg['smtp_port']) as s:
             s.starttls()
-            s.login(SMTP_USER, SMTP_PASSWORD)
-            s.sendmail(FROM_EMAIL, to, msg.as_string())
+            s.login(cfg['smtp_user'], cfg['smtp_password'])
+            s.sendmail(cfg['from_email'], to, msg.as_string())
         return True
     except Exception as e:
         print(f"[EMAIL] Failed: {e}")
         return False
 
 
-def notify_admin_new_registration(username: str, email: str) -> None:
-    if not ADMIN_EMAIL:
+def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | None' = None) -> bool:
+    cfg = get_smtp_config(db)
+    site_url = cfg['site_url']
+    link = f"{site_url}/register?code={code}"
+    html = f"""
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="color:#1a1a1a;">You're invited to the Gladney Family Tree</h2>
+      <p>Hi {to_name},</p>
+      <p>You've been invited to join the Gladney Family Tree — a private site where our family shares stories, photos, audio memories, and more.</p>
+      <p style="margin:24px 0;">
+        <a href="{link}" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Accept Invitation</a>
+      </p>
+      <p style="color:#666;font-size:13px;">Or copy this link: <a href="{link}">{link}</a></p>
+      <p style="color:#666;font-size:13px;">This invitation code can only be used once.</p>
+    </div>
+    """
+    return send_email(to_email, "You're invited to the Gladney Family Tree", html, db)
+
+
+def notify_admin_new_registration(username: str, email: str, db: 'Session | None' = None) -> None:
+    cfg = get_smtp_config(db)
+    admin_email = cfg['admin_email']
+    if not admin_email:
         return
+    site_url = cfg['site_url']
     send_email(
-        ADMIN_EMAIL,
+        admin_email,
         f"New registration: {username}",
-        f"<h2>New Registration</h2><p><b>Username:</b> {username}<br><b>Email:</b> {email or 'not provided'}</p><p><a href='{SITE_URL}/admin'>View Admin Panel</a></p>",
+        f"<h2>New Registration</h2><p><b>Username:</b> {username}<br><b>Email:</b> {email or 'not provided'}</p>"
+        f"<p><a href='{site_url}/admin'>View Admin Panel</a></p>",
+        db,
     )

@@ -43,7 +43,7 @@ export function Navbar() {
         <div className="flex h-14 items-center justify-between">
           {/* Logo */}
           <Link to="/" className="text-base font-bold text-foreground flex-shrink-0">
-            Gladney Family
+            LandTG Memories
           </Link>
 
           {/* Desktop nav */}

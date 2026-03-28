@@ -5,22 +5,28 @@ import { PhotoGrid } from './components/PhotoGrid';
 import { PhotoUpload } from './components/PhotoUpload';
 import { AlbumGrid } from './components/AlbumGrid';
 import { AlbumView } from './components/AlbumView';
-import { usePhotos, useDeletePhoto } from './hooks/usePhotos';
-import { useAlbums, useCreateAlbum, useDeleteAlbum } from './hooks/useAlbums';
+import { usePhotos, useDeletePhoto, useUpdatePhoto } from './hooks/usePhotos';
+import { useAlbums, useCreateAlbum, useDeleteAlbum, useAddPhotoToAlbum } from './hooks/useAlbums';
+import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { Album, Photo } from '@/types/api';
 
 export function PhotosPage() {
   const { data: photos, isLoading: loadingPhotos } = usePhotos();
   const { data: albums, isLoading: loadingAlbums } = useAlbums();
   const deletePhoto = useDeletePhoto();
+  const updatePhoto = useUpdatePhoto();
   const createAlbum = useCreateAlbum();
   const deleteAlbum = useDeleteAlbum();
+  const addPhotoToAlbum = useAddPhotoToAlbum();
+  const isAdmin = useIsAdmin();
 
   const [showUpload, setShowUpload] = useState(false);
   const [showNewAlbum, setShowNewAlbum] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
   const [lightbox, setLightbox] = useState<Photo | null>(null);
+  const [sortKey, setSortKey] = useState<'created_at' | 'taken_at'>('created_at');
+  const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
 
   function handleDeletePhoto(id: number) {
     if (!confirm('Delete this photo?')) return;
@@ -61,11 +67,11 @@ export function PhotosPage() {
       <PageHeader
         title="Photos"
         description="Family photos and albums"
-        action={
+        action={isAdmin ? (
           <div className="flex gap-2">
             <button
               onClick={() => { setShowNewAlbum((v) => !v); setShowUpload(false); }}
-              className="rounded-md border border-border px-4 py-2 text-sm font-semibold text-foreground hover:bg-accent transition-colors"
+              className="rounded-md border border-white/60 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
             >
               {showNewAlbum ? 'Cancel' : 'New album'}
             </button>
@@ -76,7 +82,7 @@ export function PhotosPage() {
               {showUpload ? 'Cancel' : 'Upload photos'}
             </button>
           </div>
-        }
+        ) : undefined}
       />
 
       {/* New album form */}
@@ -137,33 +143,64 @@ export function PhotosPage() {
               <h2 className="text-base font-semibold text-foreground mb-4">Albums</h2>
               <AlbumGrid
                 albums={albums!}
+                isAdmin={isAdmin}
                 onSelect={setSelectedAlbum}
                 onDelete={handleDeleteAlbum}
+                onDropPhoto={(albumId, photoId) => addPhotoToAlbum.mutate({ albumId, photoId })}
               />
             </section>
           )}
 
           {/* ── All photos ── */}
           <section>
-            <h2 className="text-base font-semibold text-foreground mb-4">All Photos</h2>
+            <div className="flex items-center justify-between mb-4 gap-3">
+              <h2 className="text-base font-semibold text-foreground">All Photos</h2>
+              {isAdmin && (photos?.length ?? 0) > 0 && (
+                <div className="flex items-center gap-2">
+                  <select
+                    value={sortKey}
+                    onChange={(e) => setSortKey(e.target.value as 'created_at' | 'taken_at')}
+                    className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="created_at">Upload date</option>
+                    <option value="taken_at">Taken date</option>
+                  </select>
+                  <button
+                    onClick={() => setSortDir((d) => d === 'desc' ? 'asc' : 'desc')}
+                    className="rounded border border-border bg-background px-2 py-1 text-xs text-foreground hover:bg-accent"
+                  >
+                    {sortDir === 'desc' ? 'Newest first' : 'Oldest first'}
+                  </button>
+                </div>
+              )}
+            </div>
             {!photos?.length ? (
               <EmptyState
                 title="No photos yet"
                 description="Upload your first family photo to get started."
-                action={
+                action={isAdmin ? (
                   <button
                     onClick={() => setShowUpload(true)}
                     className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
                   >
                     Upload photos
                   </button>
-                }
+                ) : undefined}
               />
             ) : (
               <PhotoGrid
-                photos={photos}
+                photos={[...photos].sort((a, b) => {
+                  const aVal = sortKey === 'taken_at' ? (a.taken_at ?? a.created_at) : a.created_at;
+                  const bVal = sortKey === 'taken_at' ? (b.taken_at ?? b.created_at) : b.created_at;
+                  const diff = new Date(aVal).getTime() - new Date(bVal).getTime();
+                  return sortDir === 'desc' ? -diff : diff;
+                })}
+                isAdmin={isAdmin}
                 onDelete={handleDeletePhoto}
                 onSelect={setLightbox}
+                onUpdate={(id, data) => updatePhoto.mutate({ id, data })}
+                showDetails={isAdmin}
+                draggable={(albums?.length ?? 0) > 0}
               />
             )}
           </section>
