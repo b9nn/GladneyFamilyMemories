@@ -28,12 +28,9 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
   const url = file.url ?? '';
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-black/90" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex flex-col bg-black/90">
       {/* Header */}
-      <div
-        className="flex items-center justify-between px-4 py-3 bg-black/60 flex-shrink-0"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="flex items-center justify-between px-4 py-3 bg-black flex-shrink-0">
         <p className="text-sm font-medium text-white truncate">{file.title ?? file.filename}</p>
         <div className="flex items-center gap-4 ml-4 flex-shrink-0">
           {url && (
@@ -45,7 +42,12 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
               Download
             </a>
           )}
-          <button onClick={onClose} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
+          <button
+            onClick={onClose}
+            className="flex items-center gap-1.5 rounded-md bg-white/20 hover:bg-white/40 px-3 py-1.5 text-sm font-semibold text-white transition-colors"
+          >
+            ✕ Close
+          </button>
         </div>
       </div>
 
