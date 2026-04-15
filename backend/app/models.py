@@ -171,3 +171,55 @@ class BackgroundImage(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     is_active = Column(Boolean, default=True)  # Only one should be active at a time
 
+
+class FamilyMember(Base):
+    __tablename__ = "family_members"
+
+    id = Column(Integer, primary_key=True, index=True)
+    first_name = Column(String, nullable=False)
+    last_name = Column(String, nullable=False)
+    birth_date = Column(String, nullable=True)
+    death_date = Column(String, nullable=True)
+    bio = Column(Text, nullable=True)
+    photo_id = Column(Integer, ForeignKey("photos.id"), nullable=True)
+    created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    position_x = Column(Integer, default=0)
+    position_y = Column(Integer, default=0)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    photo = relationship("Photo")
+
+
+class FamilyRelationship(Base):
+    __tablename__ = "family_relationships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    person_a_id = Column(Integer, ForeignKey("family_members.id", ondelete="CASCADE"), nullable=False)
+    person_b_id = Column(Integer, ForeignKey("family_members.id", ondelete="CASCADE"), nullable=False)
+    relationship_type = Column(String, nullable=False)  # parent_child, spouse, sibling
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    person_a = relationship("FamilyMember", foreign_keys=[person_a_id])
+    person_b = relationship("FamilyMember", foreign_keys=[person_b_id])
+
+
+class Tag(Base):
+    __tablename__ = "tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False, index=True)
+    category = Column(String, default="topic")  # person, place, event, topic
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class ContentTag(Base):
+    __tablename__ = "content_tags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    tag_id = Column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), nullable=False)
+    content_type = Column(String, nullable=False)  # vignette, photo, audio, file
+    content_id = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    tag = relationship("Tag")
+

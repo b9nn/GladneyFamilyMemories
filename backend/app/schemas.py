@@ -238,6 +238,94 @@ class BackgroundImage(BaseModel):
         from_attributes = True
 
 
+class FamilyMemberBase(BaseModel):
+    first_name: str
+    last_name: str
+    birth_date: Optional[str] = None
+    death_date: Optional[str] = None
+    bio: Optional[str] = None
+    photo_id: Optional[int] = None
+
+
+class FamilyMemberCreate(FamilyMemberBase):
+    pass
+
+
+class FamilyMemberUpdate(BaseModel):
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    birth_date: Optional[str] = None
+    death_date: Optional[str] = None
+    bio: Optional[str] = None
+    photo_id: Optional[int] = None
+    position_x: Optional[int] = None
+    position_y: Optional[int] = None
+
+
+class FamilyMember(FamilyMemberBase):
+    id: int
+    created_by_id: int
+    position_x: int
+    position_y: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FamilyRelationshipCreate(BaseModel):
+    person_a_id: int
+    person_b_id: int
+    relationship_type: str  # parent_child, spouse, sibling
+
+
+class FamilyRelationship(FamilyRelationshipCreate):
+    id: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class FamilyTreeResponse(BaseModel):
+    members: List[FamilyMember]
+    relationships: List[FamilyRelationship]
+
+
+class NodePosition(BaseModel):
+    id: int
+    position_x: int
+    position_y: int
+
+
+class TagCreate(BaseModel):
+    name: str
+    category: Optional[str] = "topic"
+
+
+class Tag(BaseModel):
+    id: int
+    name: str
+    category: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ContentTagCreate(BaseModel):
+    tag_id: int
+
+
+class SearchResult(BaseModel):
+    content_type: str
+    content_id: int
+    title: str
+    description: Optional[str] = None
+    created_at: datetime
+    tags: List[Tag] = []
+
+
 # Update forward references
 Vignette.model_rebuild()
 AlbumWithPhotos.model_rebuild()

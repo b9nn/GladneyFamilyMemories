@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime, timedelta
@@ -1229,6 +1229,9 @@ def get_photo_file(
     ).first()
     if not photo:
         raise HTTPException(status_code=404, detail="Photo not found")
+    if photo.file_path.startswith("http"):
+        chunks, content_type = storage.stream_from_cloud(photo.file_path)
+        return StreamingResponse(chunks, media_type=content_type)
     return FileResponse(photo.file_path)
 
 
@@ -1688,6 +1691,18 @@ def get_audio_file(
     if not audio:
         raise HTTPException(status_code=404, detail="Audio recording not found")
 
+    if audio.file_path.startswith("http"):
+        chunks, content_type = storage.stream_from_cloud(audio.file_path)
+        return StreamingResponse(
+            chunks,
+            media_type=content_type,
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            },
+        )
+
     return FileResponse(
         audio.file_path,
         headers={
@@ -1843,6 +1858,15 @@ def get_file(
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
 
+    if file.file_path.startswith("http"):
+        download_filename = file.title or file.filename
+        chunks, content_type = storage.stream_from_cloud(file.file_path)
+        return StreamingResponse(
+            chunks,
+            media_type=file.file_type or content_type,
+            headers={"Content-Disposition": f'attachment; filename="{download_filename}"'},
+        )
+
     file_path = Path(file.file_path)
     if not file_path.exists():
         raise HTTPException(status_code=404, detail="File not found on disk")
@@ -1947,6 +1971,306 @@ def delete_file(
 
     print(f"[DELETE FILE] Successfully deleted file {file_id}")
     return {"message": "File deleted successfully"}
+
+
+# ─── Family Tree ───────────────────────────────────────────────
+
+@app.get("/api/family-tree", response_model=schemas.FamilyTreeResponse)
+async def get_family_tree(
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    members = db.query(models.FamilyMember).all()
+    relationships = db.query(models.FamilyRelationship).all()
+    return {"members": members, "relationships": relationships}
+
+
+@app.post("/api/family-members", response_model=schemas.FamilyMember)
+async def create_family_member(
+    data: schemas.FamilyMemberCreate,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    member = models.FamilyMember(**data.model_dump(), created_by_id=current_user.id)
+    db.add(member)
+    db.commit()
+    db.refresh(member)
+    return member
+
+
+@app.put("/api/family-members/{member_id}", response_model=schemas.FamilyMember)
+async def update_family_member(
+    member_id: int,
+    data: schemas.FamilyMemberUpdate,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    member = db.query(models.FamilyMember).filter(models.FamilyMember.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Family member not found")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(member, key, value)
+    db.commit()
+    db.refresh(member)
+    return member
+
+
+@app.delete("/api/family-members/{member_id}")
+async def delete_family_member(
+    member_id: int,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    member = db.query(models.FamilyMember).filter(models.FamilyMember.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Family member not found")
+    # Delete associated relationships
+    db.query(models.FamilyRelationship).filter(
+        (models.FamilyRelationship.person_a_id == member_id) |
+        (models.FamilyRelationship.person_b_id == member_id)
+    ).delete(synchronize_session=False)
+    db.delete(member)
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/family-relationships", response_model=schemas.FamilyRelationship)
+async def create_family_relationship(
+    data: schemas.FamilyRelationshipCreate,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    rel = models.FamilyRelationship(**data.model_dump())
+    db.add(rel)
+    db.commit()
+    db.refresh(rel)
+    return rel
+
+
+@app.delete("/api/family-relationships/{rel_id}")
+async def delete_family_relationship(
+    rel_id: int,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    rel = db.query(models.FamilyRelationship).filter(models.FamilyRelationship.id == rel_id).first()
+    if not rel:
+        raise HTTPException(status_code=404, detail="Relationship not found")
+    db.delete(rel)
+    db.commit()
+    return {"ok": True}
+
+
+@app.post("/api/family-tree/layout")
+async def save_family_tree_layout(
+    positions: List[schemas.NodePosition],
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    for pos in positions:
+        member = db.query(models.FamilyMember).filter(models.FamilyMember.id == pos.id).first()
+        if member:
+            member.position_x = pos.position_x
+            member.position_y = pos.position_y
+    db.commit()
+    return {"ok": True}
+
+
+# ─── Search & Tags ─────────────────────────────────────────────
+
+@app.get("/api/tags", response_model=List[schemas.Tag])
+async def list_tags(
+    category: Optional[str] = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    q = db.query(models.Tag)
+    if category:
+        q = q.filter(models.Tag.category == category)
+    return q.order_by(models.Tag.name).all()
+
+
+@app.post("/api/tags", response_model=schemas.Tag)
+async def create_tag(
+    data: schemas.TagCreate,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    existing = db.query(models.Tag).filter(models.Tag.name == data.name).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Tag already exists")
+    tag = models.Tag(**data.model_dump())
+    db.add(tag)
+    db.commit()
+    db.refresh(tag)
+    return tag
+
+
+@app.delete("/api/tags/{tag_id}")
+async def delete_tag(
+    tag_id: int,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+    if not tag:
+        raise HTTPException(status_code=404, detail="Tag not found")
+    db.query(models.ContentTag).filter(models.ContentTag.tag_id == tag_id).delete()
+    db.delete(tag)
+    db.commit()
+    return {"ok": True}
+
+
+@app.get("/api/{content_type}/{content_id}/tags", response_model=List[schemas.Tag])
+async def get_content_tags(
+    content_type: str,
+    content_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if content_type not in ("vignette", "photo", "audio", "file"):
+        raise HTTPException(status_code=400, detail="Invalid content type")
+    ct_rows = db.query(models.ContentTag).filter(
+        models.ContentTag.content_type == content_type,
+        models.ContentTag.content_id == content_id,
+    ).all()
+    return [ct.tag for ct in ct_rows]
+
+
+@app.post("/api/{content_type}/{content_id}/tags")
+async def add_content_tag(
+    content_type: str,
+    content_id: int,
+    data: schemas.ContentTagCreate,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    if content_type not in ("vignette", "photo", "audio", "file"):
+        raise HTTPException(status_code=400, detail="Invalid content type")
+    existing = db.query(models.ContentTag).filter(
+        models.ContentTag.tag_id == data.tag_id,
+        models.ContentTag.content_type == content_type,
+        models.ContentTag.content_id == content_id,
+    ).first()
+    if existing:
+        return {"ok": True}
+    ct = models.ContentTag(tag_id=data.tag_id, content_type=content_type, content_id=content_id)
+    db.add(ct)
+    db.commit()
+    return {"ok": True}
+
+
+@app.delete("/api/{content_type}/{content_id}/tags/{tag_id}")
+async def remove_content_tag(
+    content_type: str,
+    content_id: int,
+    tag_id: int,
+    current_user: models.User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    if content_type not in ("vignette", "photo", "audio", "file"):
+        raise HTTPException(status_code=400, detail="Invalid content type")
+    db.query(models.ContentTag).filter(
+        models.ContentTag.tag_id == tag_id,
+        models.ContentTag.content_type == content_type,
+        models.ContentTag.content_id == content_id,
+    ).delete()
+    db.commit()
+    return {"ok": True}
+
+
+@app.get("/api/search", response_model=List[schemas.SearchResult])
+async def search_content(
+    q: str = "",
+    type: Optional[str] = None,
+    tag_ids: Optional[str] = None,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    # Parse tag_ids from comma-separated string
+    filter_tag_ids: list = []
+    if tag_ids:
+        filter_tag_ids = [int(t) for t in tag_ids.split(",") if t.strip().isdigit()]
+
+    # If filtering by tags, get content items that have ALL requested tags
+    tagged_content = None
+    if filter_tag_ids:
+        sets = []
+        for tid in filter_tag_ids:
+            ct_rows = db.query(models.ContentTag.content_type, models.ContentTag.content_id).filter(
+                models.ContentTag.tag_id == tid
+            ).all()
+            sets.append({(row.content_type, row.content_id) for row in ct_rows})
+        tagged_content = sets[0]
+        for s in sets[1:]:
+            tagged_content &= s
+
+    has_query = len(q) >= 2
+    if not has_query and not filter_tag_ids:
+        return []
+
+    pattern = f"%{q}%" if has_query else None
+    results: list = []
+    content_types = [type] if type else ["vignette", "photo", "audio", "file"]
+
+    def _get_tags(ctype, cid):
+        return [ct.tag for ct in db.query(models.ContentTag).filter(
+            models.ContentTag.content_type == ctype, models.ContentTag.content_id == cid
+        ).all()]
+
+    def _passes_tag_filter(ctype, cid):
+        return tagged_content is None or (ctype, cid) in tagged_content
+
+    if "vignette" in content_types:
+        vq = db.query(models.Vignette)
+        if pattern:
+            vq = vq.filter((models.Vignette.title.ilike(pattern)) | (models.Vignette.content.ilike(pattern)))
+        for v in vq.all():
+            if not _passes_tag_filter("vignette", v.id):
+                continue
+            results.append(schemas.SearchResult(
+                content_type="vignette", content_id=v.id, title=v.title,
+                description=(v.content or "")[:200], created_at=v.created_at, tags=_get_tags("vignette", v.id),
+            ))
+
+    if "photo" in content_types:
+        pq = db.query(models.Photo)
+        if pattern:
+            pq = pq.filter((models.Photo.title.ilike(pattern)) | (models.Photo.description.ilike(pattern)))
+        for p in pq.all():
+            if not _passes_tag_filter("photo", p.id):
+                continue
+            results.append(schemas.SearchResult(
+                content_type="photo", content_id=p.id, title=p.title or p.filename,
+                description=p.description, created_at=p.created_at, tags=_get_tags("photo", p.id),
+            ))
+
+    if "audio" in content_types:
+        aq = db.query(models.AudioRecording)
+        if pattern:
+            aq = aq.filter((models.AudioRecording.title.ilike(pattern)) | (models.AudioRecording.description.ilike(pattern)))
+        for a in aq.all():
+            if not _passes_tag_filter("audio", a.id):
+                continue
+            results.append(schemas.SearchResult(
+                content_type="audio", content_id=a.id, title=a.title or a.filename,
+                description=a.description, created_at=a.created_at, tags=_get_tags("audio", a.id),
+            ))
+
+    if "file" in content_types:
+        fq = db.query(models.File)
+        if pattern:
+            fq = fq.filter((models.File.title.ilike(pattern)) | (models.File.description.ilike(pattern)))
+        for f in fq.all():
+            if not _passes_tag_filter("file", f.id):
+                continue
+            results.append(schemas.SearchResult(
+                content_type="file", content_id=f.id, title=f.title or f.filename,
+                description=f.description, created_at=f.created_at, tags=_get_tags("file", f.id),
+            ))
+
+    results.sort(key=lambda r: r.created_at, reverse=True)
+    return results
 
 
 # Catch-all route to serve React app for client-side routing

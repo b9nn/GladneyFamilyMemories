@@ -199,6 +199,28 @@ def _delete_from_local(file_path: str) -> bool:
         return False
 
 
+def stream_from_cloud(file_url: str):
+    """
+    Fetch an object from cloud storage by parsing its URL and return
+    (iterator_of_bytes, content_type). Works for both presigned and public URLs
+    produced by upload_file().
+    """
+    config = get_storage_config()
+    s3_client = get_s3_client()
+
+    if config['public_url'] and file_url.startswith(config['public_url']):
+        s3_key = file_url[len(config['public_url']) + 1:]
+    else:
+        # Presigned URL: https://<endpoint-host>/<bucket>/<key>?X-Amz-...
+        from urllib.parse import urlparse
+        path = urlparse(file_url).path.lstrip('/')
+        bucket_prefix = f"{config['bucket_name']}/"
+        s3_key = path[len(bucket_prefix):] if path.startswith(bucket_prefix) else path
+
+    obj = s3_client.get_object(Bucket=config['bucket_name'], Key=s3_key)
+    return obj['Body'].iter_chunks(chunk_size=64 * 1024), obj.get('ContentType', 'application/octet-stream')
+
+
 def get_file_url(file_path_or_url: str) -> str:
     """
     Get the public URL for a file.
