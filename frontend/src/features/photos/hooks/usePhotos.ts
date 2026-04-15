@@ -6,7 +6,7 @@ import type { PhotoUpdate } from '@/types/api';
 const KEY = ['photos'];
 
 export function usePhotos() {
-  return useQuery({ queryKey: KEY, queryFn: photosApi.list });
+  return useQuery({ queryKey: KEY, queryFn: photosApi.list, staleTime: 0, refetchOnMount: true });
 }
 
 export function useUploadPhoto() {

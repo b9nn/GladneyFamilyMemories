@@ -7,7 +7,7 @@ const KEY = ['albums'];
 const albumPhotosKey = (id: number) => ['albums', id, 'photos'];
 
 export function useAlbums() {
-  return useQuery({ queryKey: KEY, queryFn: albumsApi.list });
+  return useQuery({ queryKey: KEY, queryFn: albumsApi.list, staleTime: 0, refetchOnMount: true });
 }
 
 export function useAlbumPhotos(albumId: number) {

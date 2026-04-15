@@ -11,7 +11,7 @@ import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { Album, Photo } from '@/types/api';
 
 export function PhotosPage() {
-  const { data: photos, isLoading: loadingPhotos } = usePhotos();
+  const { data: photos, isLoading: loadingPhotos, isError: photosError, refetch: refetchPhotos } = usePhotos();
   const { data: albums, isLoading: loadingAlbums } = useAlbums();
   const deletePhoto = useDeletePhoto();
   const updatePhoto = useUpdatePhoto();
@@ -27,6 +27,8 @@ export function PhotosPage() {
   const [lightbox, setLightbox] = useState<Photo | null>(null);
   const [sortKey, setSortKey] = useState<'created_at' | 'taken_at'>('created_at');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
+  const [draggingPhotoId, setDraggingPhotoId] = useState<number | null>(null);
+  const [dropOverAlbumId, setDropOverAlbumId] = useState<number | null>(null);
 
   function handleDeletePhoto(id: number) {
     if (!confirm('Delete this photo?')) return;
@@ -174,7 +176,17 @@ export function PhotosPage() {
                 </div>
               )}
             </div>
-            {!photos?.length ? (
+            {photosError ? (
+              <div className="flex flex-col items-center gap-3 py-12 text-center">
+                <p className="text-sm text-muted-foreground">Could not load photos.</p>
+                <button
+                  onClick={() => refetchPhotos()}
+                  className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+                >
+                  Retry
+                </button>
+              </div>
+            ) : !photos?.length ? (
               <EmptyState
                 title="No photos yet"
                 description="Upload your first family photo to get started."
@@ -196,14 +208,46 @@ export function PhotosPage() {
                   return sortDir === 'desc' ? -diff : diff;
                 })}
                 isAdmin={isAdmin}
+                albums={albums ?? []}
                 onDelete={handleDeletePhoto}
                 onSelect={setLightbox}
                 onUpdate={(id, data) => updatePhoto.mutate({ id, data })}
+                onAddToAlbum={(photoId, albumId) => addPhotoToAlbum.mutate({ albumId, photoId })}
+                onPhotoDragStart={setDraggingPhotoId}
+                onPhotoDragEnd={() => { setDraggingPhotoId(null); setDropOverAlbumId(null); }}
                 showDetails={isAdmin}
                 draggable={(albums?.length ?? 0) > 0}
               />
             )}
           </section>
+        </div>
+      )}
+
+      {/* Floating album drop zone — appears while dragging a photo */}
+      {draggingPhotoId !== null && (albums?.length ?? 0) > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-border bg-card/95 backdrop-blur px-4 py-3 shadow-2xl">
+          <span className="text-xs font-medium text-muted-foreground flex-shrink-0">Drop into album:</span>
+          {albums!.map((album) => (
+            <div
+              key={album.id}
+              onDragOver={(e) => { e.preventDefault(); setDropOverAlbumId(album.id); }}
+              onDragLeave={() => setDropOverAlbumId(null)}
+              onDrop={(e) => {
+                e.preventDefault();
+                const photoId = Number(e.dataTransfer.getData('photoId'));
+                if (photoId) addPhotoToAlbum.mutate({ albumId: album.id, photoId });
+                setDraggingPhotoId(null);
+                setDropOverAlbumId(null);
+              }}
+              className={`rounded-lg border-2 px-3 py-2 text-sm font-medium transition-all cursor-pointer ${
+                dropOverAlbumId === album.id
+                  ? 'border-primary bg-primary text-primary-foreground scale-105'
+                  : 'border-border text-foreground hover:border-primary/60'
+              }`}
+            >
+              {album.name}
+            </div>
+          ))}
         </div>
       )}
 
