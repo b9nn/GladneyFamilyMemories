@@ -14,18 +14,18 @@ One-time setup. Follow in order.
 2. Create an S3 API token with read/write on that bucket.
 3. Enable public bucket access OR connect a custom subdomain (e.g. `media.mrtag.com`).
 
-## 2. Migrate data from Render Postgres
+## 2. Migrate data (if restoring from a prior Postgres host)
 
 From a machine with `pg_dump` / `psql` installed:
 
 ```bash
-# Dump existing prod DB (get URL from Render dashboard → the WORKING one, with 2 users)
+# Dump existing prod DB
 pg_dump --no-owner --no-acl --clean --if-exists \
-  "postgresql://USER:PASS@HOST/DB" > render_dump.sql
+  "postgresql://USER:PASS@HOST/DB" > prod_dump.sql
 
 # Restore into Supabase (use the DIRECT connection URI, not the pooler, for restore)
 psql "postgresql://postgres:PASS@db.xxxx.supabase.co:5432/postgres?sslmode=require" \
-  < render_dump.sql
+  < prod_dump.sql
 
 # Verify row counts
 psql "$SUPABASE_URL" -c "SELECT count(*) FROM users;"
@@ -79,13 +79,6 @@ fly tokens create deploy -a gladney-family-tree   # copy output
 
 In GitHub → repo Settings → Secrets → Actions → new secret `FLY_API_TOKEN` = that token.
 Now every push to `main` auto-deploys via `.github/workflows/deploy.yml`.
-
-## 7. Decommission Render
-
-After Fly is stable for a few days:
-1. Final `pg_dump` of Render DB → save locally as backup.
-2. Delete `gladney-family-backend` Render service (the empty one).
-3. Delete `mrtag.com` Render service and its Postgres.
 
 ## Verification checklist
 

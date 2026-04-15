@@ -2,16 +2,16 @@
 
 ## Why You Need This
 
-**Problem**: Render's filesystem is ephemeral - every time you deploy, ALL uploaded photos/files are deleted.
+**Problem**: Fly.io machine filesystems are ephemeral - every time you deploy, any uploaded photos/files written to local disk are lost.
 
 **Solution**: Store files in Cloudflare R2 (like AWS S3, but free and faster).
 
 ## Benefits
 
-✅ Free 10GB storage forever
-✅ Files persist across deployments
-✅ Faster file serving
-✅ No Render storage limits
+- Free 10GB storage forever
+- Files persist across deployments
+- Faster file serving
+- No host storage limits
 
 ---
 
@@ -61,31 +61,24 @@ This allows files to be accessed via direct URLs.
 5. Cloudflare will give you a public URL like:
    - `https://pub-abc123.r2.dev`
 
-### 6. Add to Render Environment Variables
+### 6. Set Fly.io Secrets
 
-Go to your **gladney-family-backend** service in Render:
+Set these as Fly.io secrets on the backend app (`gladney-family-tree`):
 
-**Environment → Add Environment Variable**
-
-Add these **5 variables**:
-
-```
-USE_CLOUD_STORAGE=true
-
-S3_ENDPOINT_URL=https://ACCOUNT_ID.r2.cloudflarestorage.com
-(Replace ACCOUNT_ID with your actual account ID from step 4)
-
-S3_ACCESS_KEY_ID=your_access_key_from_step_3
-
-S3_SECRET_ACCESS_KEY=your_secret_key_from_step_3
-
-S3_BUCKET_NAME=gladney-family-photos
-
-S3_PUBLIC_URL=https://pub-abc123.r2.dev
-(Optional - use the public URL from step 5 if you set it up)
+```bash
+fly secrets set \
+  USE_CLOUD_STORAGE=true \
+  S3_ENDPOINT_URL=https://ACCOUNT_ID.r2.cloudflarestorage.com \
+  S3_ACCESS_KEY_ID=your_access_key_from_step_3 \
+  S3_SECRET_ACCESS_KEY=your_secret_key_from_step_3 \
+  S3_BUCKET_NAME=gladney-family-photos \
+  S3_PUBLIC_URL=https://pub-abc123.r2.dev
 ```
 
-**Example:**
+- Replace `ACCOUNT_ID` with your actual account ID from step 4.
+- `S3_PUBLIC_URL` is optional - use the public URL from step 5 if you set it up.
+
+**Example values:**
 ```
 USE_CLOUD_STORAGE=true
 S3_ENDPOINT_URL=https://a1b2c3d4e5f6g7h8.r2.cloudflarestorage.com
@@ -97,9 +90,7 @@ S3_PUBLIC_URL=https://pub-xyz789abc123.r2.dev
 
 ### 7. Redeploy Backend
 
-In Render, click **Manual Deploy → Deploy latest commit**
-
-This will restart the backend with R2 storage enabled.
+`fly secrets set` triggers a rolling redeploy automatically. If you need to force one, run `fly deploy`.
 
 ---
 
@@ -114,7 +105,7 @@ This will restart the backend with R2 storage enabled.
 
 ## What About Existing Photos?
 
-**Current photos are on Render's filesystem** and will be lost on next deployment.
+**Any photos still on the Fly.io machine's local filesystem** will be lost on next deployment.
 
 **Options:**
 
@@ -139,7 +130,7 @@ Your family website will **never exceed this** unless you upload thousands of HD
 ## Troubleshooting
 
 **"Failed to upload file"**
-- Check your credentials in Render environment variables
+- Check your credentials via `fly secrets list` (values aren't shown, but names should all be present)
 - Make sure endpoint URL includes your account ID
 - Verify bucket name is correct
 

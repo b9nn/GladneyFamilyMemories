@@ -16,12 +16,12 @@
 │           FastAPI (Python 3.11)                   │
 │     SQLAlchemy ORM + JWT Authentication           │
 │                                                  │
-│  Hosted: Render (gladney-family-backend)          │
+│  Hosted: Fly.io (gladney-family-tree)             │
 └───────┬──────────────────────────┬──────────────┘
         │                          │
 ┌───────▼──────────┐    ┌─────────▼────────────┐
 │   PostgreSQL     │    │   Cloudflare R2      │
-│   (Render)       │    │   (S3-compatible)    │
+│   (Supabase)     │    │   (S3-compatible)    │
 │   User data,     │    │   Photos, audio,     │
 │   content, tags  │    │   files, backgrounds │
 └──────────────────┘    └──────────────────────┘

@@ -73,7 +73,7 @@ def upload_file(
         print(f"[STORAGE] Uploading {filename} to cloud storage (folder: {folder})")
         return _upload_to_cloud(file_data, filename, folder, content_type)
     else:
-        print(f"[STORAGE] WARNING: Cloud storage not configured. Using local filesystem (ephemeral on Render).")
+        print(f"[STORAGE] WARNING: Cloud storage not configured. Using local filesystem (ephemeral on Fly.io).")
         print(f"[STORAGE] To enable persistent storage, set USE_CLOUD_STORAGE=true and configure S3/R2 credentials.")
         return _upload_to_local(file_data, filename, folder)
 

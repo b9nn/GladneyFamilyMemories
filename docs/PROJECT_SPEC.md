@@ -99,5 +99,5 @@ Deliverables:
 - [x] Frontend: Tag input on vignette, photo, audio, file edit forms
 - [x] Frontend: Filter-by-tag on gallery, vignettes, and timeline
 - [x] Production build optimization (code splitting with React.lazy + Suspense)
-- [ ] Deploy to Render + GitHub Pages
+- [ ] Deploy to Fly.io + GitHub Pages
 - [x] CHANGELOG.md updated with v2.0.0 release notes
