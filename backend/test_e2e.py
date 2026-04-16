@@ -18,6 +18,27 @@ from dotenv import load_dotenv
 ENV_PATH = Path(__file__).parent / ".env"
 load_dotenv(ENV_PATH)
 
+
+def prompt_if_missing(key: str, label: str = None):
+    """Read from env, else prompt on stdin. Supports piped input."""
+    if os.getenv(key):
+        return os.getenv(key)
+    label = label or key
+    val = input(f"{label}: ").strip()
+    os.environ[key] = val
+    return val
+
+
+REQUIRED = [
+    ("DATABASE_URL", "Supabase pooler URL (postgresql://...)"),
+    ("S3_ENDPOINT_URL", "R2 endpoint (https://<acct>.r2.cloudflarestorage.com)"),
+    ("S3_ACCESS_KEY_ID", "R2 access key id"),
+    ("S3_SECRET_ACCESS_KEY", "R2 secret access key"),
+    ("S3_BUCKET_NAME", "R2 bucket name"),
+]
+for k, lbl in REQUIRED:
+    prompt_if_missing(k, lbl)
+
 GREEN = "\033[92m"
 RED = "\033[91m"
 YELLOW = "\033[93m"
