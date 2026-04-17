@@ -8,7 +8,7 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 
 from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File as F, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse as _StaticFileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 
@@ -749,5 +749,5 @@ if _FRONTEND_DIST.exists():
     def spa_fallback(full_path: str):
         file = _FRONTEND_DIST / full_path
         if file.exists() and file.is_file():
-            return FileResponse(str(file))
-        return FileResponse(str(_FRONTEND_DIST / "index.html"))
+            return _StaticFileResponse(str(file))
+        return _StaticFileResponse(str(_FRONTEND_DIST / "index.html"))
