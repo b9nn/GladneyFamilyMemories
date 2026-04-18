@@ -1,6 +1,11 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useDashboardStats } from './hooks/useDashboard';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { adminApi } from '@/lib/api/admin';
+import { toast } from '@/stores/toast-store';
+import type { InviteCode } from '@/types/api';
 
 interface StatCardProps {
   label: string;
@@ -20,9 +25,105 @@ function StatCard({ label, value, to }: StatCardProps) {
   );
 }
 
+function InviteSection() {
+  const qc = useQueryClient();
+  const { data: codes } = useQuery<InviteCode[]>({ queryKey: ['invite-codes'], queryFn: adminApi.listInviteCodes });
+  const [email, setEmail] = useState('');
+  const [name, setName] = useState('');
+
+  const sendInvite = useMutation({
+    mutationFn: () => adminApi.sendInvite(email, name),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['invite-codes'] });
+      toast('Invitation sent', 'success');
+      setEmail('');
+      setName('');
+    },
+    onError: () => toast('Failed to send invitation', 'error'),
+  });
+
+  const deleteCode = useMutation({
+    mutationFn: (id: number) => adminApi.deleteInviteCode(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['invite-codes'] }),
+  });
+
+  const pending = codes?.filter((c) => !c.used_by_id) ?? [];
+  const used = codes?.filter((c) => c.used_by_id) ?? [];
+
+  return (
+    <div className="mt-10 rounded-lg border border-border bg-card p-6 space-y-6">
+      <h2 className="text-base font-semibold text-foreground">Invite a family member</h2>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-foreground">Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Full name…"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-foreground">Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="email@example.com…"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+      </div>
+
+      <button
+        onClick={() => sendInvite.mutate()}
+        disabled={!email || !name || sendInvite.isPending}
+        className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+      >
+        {sendInvite.isPending ? 'Sending…' : 'Send invitation'}
+      </button>
+
+      {pending.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">Pending invitations</p>
+          <div className="divide-y divide-border rounded-md border border-border">
+            {pending.map((c) => (
+              <div key={c.id} className="flex items-center justify-between px-4 py-2 text-sm">
+                <span className="text-foreground">{c.email ?? '—'}</span>
+                <button
+                  onClick={() => deleteCode.mutate(c.id)}
+                  className="text-xs text-muted-foreground hover:text-destructive"
+                >
+                  Revoke
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {used.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">Accepted</p>
+          <div className="divide-y divide-border rounded-md border border-border">
+            {used.map((c) => (
+              <div key={c.id} className="px-4 py-2 text-sm text-muted-foreground">
+                {c.email ?? '—'}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const { user } = useAuthStore();
   const { data: stats } = useDashboardStats();
+  const isAdmin = user?.is_admin ?? false;
 
   const greeting = user?.full_name ?? user?.username ?? 'there';
 
@@ -49,6 +150,8 @@ export function DashboardPage() {
           ))}
         </div>
       )}
+
+      {isAdmin && <InviteSection />}
     </div>
   );
 }
