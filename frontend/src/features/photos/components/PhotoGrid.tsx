@@ -187,7 +187,7 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
               No preview
             </div>
           )}
-          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors" />
+          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors pointer-events-none" />
           <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="flex items-end justify-between gap-1">
               {!showDetails && photo.title && (
