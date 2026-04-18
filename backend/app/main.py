@@ -573,7 +573,7 @@ async def upload_file_ep(
 
 
 @app.put("/api/files/{fid}", response_model=FileResponse)
-def update_file_ep(fid: int, payload: schemas.FileUpdate, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin)):
+def update_file_ep(fid: int, payload: schemas.FileUpdate, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
     f = db.query(models.File).filter(models.File.id == fid).first()
     if not f:
         raise HTTPException(404, "Not found")
