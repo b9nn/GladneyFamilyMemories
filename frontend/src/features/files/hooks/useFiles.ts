@@ -17,6 +17,15 @@ export function useUploadFile() {
   });
 }
 
+export function useUpdateFile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: { title?: string; description?: string } }) =>
+      filesApi.update(id, payload),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: KEY }); toast('File updated', 'success'); },
+  });
+}
+
 export function useDeleteFile() {
   const qc = useQueryClient();
   return useMutation({

@@ -144,6 +144,11 @@ class AudioRecordingUpdate(BaseModel):
 
 # ── Files ─────────────────────────────────────────────────────────────────────
 
+class FileUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+
+
 class FileResponse(BaseModel):
     id: int
     filename: str

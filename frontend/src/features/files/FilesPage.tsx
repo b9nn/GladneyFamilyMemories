@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { useFiles, useUploadFile, useDeleteFile } from './hooks/useFiles';
+import { useFiles, useUploadFile, useDeleteFile, useUpdateFile } from './hooks/useFiles';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { FileRecord } from '@/types/api';
 
@@ -108,6 +108,7 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
 export function FilesPage() {
   const { data: files, isLoading } = useFiles();
   const uploadFile = useUploadFile();
+  const updateFile = useUpdateFile();
   const deleteFile = useDeleteFile();
   const isAdmin = useIsAdmin();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -117,6 +118,9 @@ export function FilesPage() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [viewing, setViewing] = useState<FileRecord | null>(null);
+  const [editing, setEditing] = useState<FileRecord | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
 
   async function handleUpload() {
     if (!selectedFile) return;
@@ -137,6 +141,20 @@ export function FilesPage() {
   function handleDelete(id: number) {
     if (!confirm('Delete this file?')) return;
     deleteFile.mutate(id);
+  }
+
+  function openEdit(file: FileRecord) {
+    setEditing(file);
+    setEditTitle(file.title ?? '');
+    setEditDescription(file.description ?? '');
+  }
+
+  function handleSaveEdit() {
+    if (!editing) return;
+    updateFile.mutate(
+      { id: editing.id, payload: { title: editTitle || undefined, description: editDescription || undefined } },
+      { onSuccess: () => setEditing(null) }
+    );
   }
 
   return (
@@ -256,12 +274,20 @@ export function FilesPage() {
                   </a>
                 )}
                 {isAdmin && (
-                  <button
-                    onClick={() => handleDelete(file.id)}
-                    className="text-xs text-muted-foreground hover:text-destructive"
-                  >
-                    Delete
-                  </button>
+                  <>
+                    <button
+                      onClick={() => openEdit(file)}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(file.id)}
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Delete
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -270,6 +296,49 @@ export function FilesPage() {
       )}
 
       {viewing && <FileViewer file={viewing} onClose={() => setViewing(null)} />}
+
+      {editing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setEditing(null)}>
+          <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+            <h2 className="text-base font-semibold text-foreground">Edit file</h2>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-foreground">Title</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="Document title…"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-foreground">Description</label>
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Optional description…"
+                rows={3}
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={handleSaveEdit}
+                disabled={updateFile.isPending}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+              >
+                {updateFile.isPending ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={() => setEditing(null)}
+                className="rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

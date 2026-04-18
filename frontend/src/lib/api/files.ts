@@ -10,5 +10,7 @@ export const filesApi = {
     form.append('source', source)
     return client.post<FileRecord>('/api/files', form).then(r => r.data)
   },
+  update: (id: number, payload: { title?: string; description?: string }) =>
+    client.put<FileRecord>(`/api/files/${id}`, payload).then(r => r.data),
   delete: (id: number) => client.delete(`/api/files/${id}`).then(r => r.data),
 }
