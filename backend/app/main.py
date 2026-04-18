@@ -403,6 +403,14 @@ def create_album(payload: AlbumCreate, db: Session = Depends(get_db), cu: models
     return result
 
 
+@app.put("/api/albums/reorder")
+def reorder_albums(items: List[AlbumReorderItem], db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    for item in items:
+        db.query(models.Album).filter(models.Album.id == item.id).update({"sort_order": item.sort_order})
+    db.commit()
+    return {"message": "Reordered"}
+
+
 @app.put("/api/albums/{aid}", response_model=AlbumResponse)
 def update_album(aid: int, payload: AlbumUpdate, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     a = db.query(models.Album).filter(models.Album.id == aid).first()

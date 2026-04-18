@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { PhotoGrid } from './components/PhotoGrid';
@@ -6,7 +6,7 @@ import { PhotoUpload } from './components/PhotoUpload';
 import { AlbumGrid } from './components/AlbumGrid';
 import { AlbumView } from './components/AlbumView';
 import { usePhotos, useDeletePhoto, useUpdatePhoto } from './hooks/usePhotos';
-import { useAlbums, useCreateAlbum, useDeleteAlbum, useAddPhotoToAlbum } from './hooks/useAlbums';
+import { useAlbums, useCreateAlbum, useDeleteAlbum, useAddPhotoToAlbum, useReorderAlbums } from './hooks/useAlbums';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { Album, Photo } from '@/types/api';
 
@@ -18,13 +18,15 @@ export function PhotosPage() {
   const createAlbum = useCreateAlbum();
   const deleteAlbum = useDeleteAlbum();
   const addPhotoToAlbum = useAddPhotoToAlbum();
+  const reorderAlbums = useReorderAlbums();
   const isAdmin = useIsAdmin();
 
   const [showUpload, setShowUpload] = useState(false);
   const [showNewAlbum, setShowNewAlbum] = useState(false);
   const [newAlbumName, setNewAlbumName] = useState('');
   const [selectedAlbum, setSelectedAlbum] = useState<Album | null>(null);
-  const [lightbox, setLightbox] = useState<Photo | null>(null);
+  const [lightboxPhotos, setLightboxPhotos] = useState<Photo[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState<number>(0);
   const [sortKey, setSortKey] = useState<'created_at' | 'taken_at'>('created_at');
   const [sortDir, setSortDir] = useState<'desc' | 'asc'>('desc');
   const [draggingPhotoId, setDraggingPhotoId] = useState<number | null>(null);
@@ -48,6 +50,24 @@ export function PhotosPage() {
     setShowNewAlbum(false);
   }
 
+  function openLightbox(photoList: Photo[], photo: Photo) {
+    const idx = photoList.findIndex(p => p.id === photo.id);
+    setLightboxPhotos(photoList);
+    setLightboxIndex(idx >= 0 ? idx : 0);
+  }
+
+  function closeLightbox() {
+    setLightboxPhotos([]);
+    setLightboxIndex(0);
+  }
+
+  const sortedPhotos = photos ? [...photos].sort((a, b) => {
+    const aVal = sortKey === 'taken_at' ? (a.taken_at ?? a.created_at) : a.created_at;
+    const bVal = sortKey === 'taken_at' ? (b.taken_at ?? b.created_at) : b.created_at;
+    const diff = new Date(aVal).getTime() - new Date(bVal).getTime();
+    return sortDir === 'desc' ? -diff : diff;
+  }) : [];
+
   // Album detail view
   if (selectedAlbum) {
     return (
@@ -55,9 +75,16 @@ export function PhotosPage() {
         <AlbumView
           album={selectedAlbum}
           onBack={() => setSelectedAlbum(null)}
-          onLightbox={setLightbox}
+          onLightbox={(photoList, photo) => openLightbox(photoList, photo)}
         />
-        {lightbox && <Lightbox photo={lightbox} onClose={() => setLightbox(null)} />}
+        {lightboxPhotos.length > 0 && (
+          <Lightbox
+            photos={lightboxPhotos}
+            index={lightboxIndex}
+            onIndexChange={setLightboxIndex}
+            onClose={closeLightbox}
+          />
+        )}
       </>
     );
   }
@@ -149,6 +176,7 @@ export function PhotosPage() {
                 onSelect={setSelectedAlbum}
                 onDelete={handleDeleteAlbum}
                 onDropPhoto={(albumId, photoId) => addPhotoToAlbum.mutate({ albumId, photoId })}
+                onReorder={(orderedIds) => reorderAlbums.mutate(orderedIds.map((id, i) => ({ id, sort_order: i })))}
               />
             </section>
           )}
@@ -201,16 +229,11 @@ export function PhotosPage() {
               />
             ) : (
               <PhotoGrid
-                photos={[...photos].sort((a, b) => {
-                  const aVal = sortKey === 'taken_at' ? (a.taken_at ?? a.created_at) : a.created_at;
-                  const bVal = sortKey === 'taken_at' ? (b.taken_at ?? b.created_at) : b.created_at;
-                  const diff = new Date(aVal).getTime() - new Date(bVal).getTime();
-                  return sortDir === 'desc' ? -diff : diff;
-                })}
+                photos={sortedPhotos}
                 isAdmin={isAdmin}
                 albums={albums ?? []}
                 onDelete={handleDeletePhoto}
-                onSelect={setLightbox}
+                onSelect={(photo) => openLightbox(sortedPhotos, photo)}
                 onUpdate={(id, data) => updatePhoto.mutate({ id, data })}
                 onAddToAlbum={(photoId, albumId) => addPhotoToAlbum.mutate({ albumId, photoId })}
                 onPhotoDragStart={setDraggingPhotoId}
@@ -251,33 +274,89 @@ export function PhotosPage() {
         </div>
       )}
 
-      {lightbox && <Lightbox photo={lightbox} onClose={() => setLightbox(null)} />}
+      {lightboxPhotos.length > 0 && (
+        <Lightbox
+          photos={lightboxPhotos}
+          index={lightboxIndex}
+          onIndexChange={setLightboxIndex}
+          onClose={closeLightbox}
+        />
+      )}
     </div>
   );
 }
 
-function Lightbox({ photo, onClose }: { photo: Photo; onClose: () => void }) {
+interface LightboxProps {
+  photos: Photo[];
+  index: number;
+  onIndexChange: (i: number) => void;
+  onClose: () => void;
+}
+
+function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
+  const photo = photos[index];
+  const hasPrev = index > 0;
+  const hasNext = index < photos.length - 1;
+
+  const prev = useCallback(() => { if (hasPrev) onIndexChange(index - 1); }, [hasPrev, index, onIndexChange]);
+  const next = useCallback(() => { if (hasNext) onIndexChange(index + 1); }, [hasNext, index, onIndexChange]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') prev();
+      if (e.key === 'ArrowRight') next();
+    }
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, prev, next]);
+
+  if (!photo) return null;
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-      onClick={onClose}
-    >
-      <div className="relative max-w-5xl max-h-[90vh] p-4" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={onClose}>
+      {/* Prev */}
+      {hasPrev && (
+        <button
+          onClick={(e) => { e.stopPropagation(); prev(); }}
+          className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 text-white w-10 h-10 flex items-center justify-center hover:bg-black/90 text-xl z-10"
+        >
+          ‹
+        </button>
+      )}
+      {/* Image */}
+      <div className="relative max-w-5xl max-h-[90vh] px-16 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
         <img
           src={photo.url ?? ''}
           alt={photo.title ?? photo.filename}
           className="max-w-full max-h-[80vh] object-contain rounded-lg"
         />
-        {photo.title && (
-          <p className="mt-2 text-center text-white text-sm">{photo.title}</p>
+        {(photo.title || photo.description) && (
+          <div className="mt-3 text-center">
+            {photo.title && <p className="text-white text-sm font-medium">{photo.title}</p>}
+            {photo.description && <p className="text-white/70 text-xs mt-1">{photo.description}</p>}
+          </div>
         )}
-        <button
-          onClick={onClose}
-          className="absolute top-2 right-2 rounded-full bg-black/60 text-white w-8 h-8 flex items-center justify-center hover:bg-black"
-        >
-          ✕
-        </button>
+        {photos.length > 1 && (
+          <p className="mt-2 text-white/40 text-xs">{index + 1} / {photos.length}</p>
+        )}
       </div>
+      {/* Next */}
+      {hasNext && (
+        <button
+          onClick={(e) => { e.stopPropagation(); next(); }}
+          className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 text-white w-10 h-10 flex items-center justify-center hover:bg-black/90 text-xl z-10"
+        >
+          ›
+        </button>
+      )}
+      {/* Close */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 rounded-full bg-black/60 text-white w-9 h-9 flex items-center justify-center hover:bg-black/90 text-sm z-10"
+      >
+        ✕
+      </button>
     </div>
   );
 }

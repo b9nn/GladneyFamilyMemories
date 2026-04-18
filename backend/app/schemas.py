@@ -111,6 +111,10 @@ class AlbumUpdate(BaseModel):
     description: Optional[str] = None
     sort_order: Optional[int] = None
 
+class AlbumReorderItem(BaseModel):
+    id: int
+    sort_order: int
+
 class AlbumResponse(BaseModel):
     id: int
     name: str

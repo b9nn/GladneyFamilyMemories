@@ -8,7 +8,7 @@ import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 interface AlbumViewProps {
   album: Album;
   onBack: () => void;
-  onLightbox: (photo: Photo) => void;
+  onLightbox: (photos: Photo[], photo: Photo) => void;
 }
 
 export function AlbumView({ album, onBack, onLightbox }: AlbumViewProps) {
@@ -103,7 +103,7 @@ export function AlbumView({ album, onBack, onLightbox }: AlbumViewProps) {
           photos={albumPhotos}
           isAdmin={isAdmin}
           onDelete={handleRemove}
-          onSelect={onLightbox}
+          onSelect={(photo) => onLightbox(albumPhotos, photo)}
           onSetCover={isAdmin ? (photo) => setCover.mutate({ albumId: album.id, photoId: photo.id }) : undefined}
           deleteLabel="Remove"
         />
