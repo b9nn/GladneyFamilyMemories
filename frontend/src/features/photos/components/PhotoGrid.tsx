@@ -1,4 +1,6 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
+import { GripVertical } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
 import type { Album, Photo, PhotoUpdate } from '@/types/api';
 
@@ -286,51 +288,83 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
 // ── Grid ──────────────────────────────────────────────────────────────────────
 
 export function PhotoGrid({ photos, isAdmin = false, albums, onDelete, onSelect, onSetCover, onUpdate, onAddToAlbum, onPhotoDragStart, onPhotoDragEnd, deleteLabel = 'Delete', draggable = false, showDetails = false, onReorderPhotos }: PhotoGridProps) {
-  const [reorderDragId, setReorderDragId] = useState<number | null>(null);
-  const [reorderOverId, setReorderOverId] = useState<number | null>(null);
-
-  const handleReorderDrop = useCallback((targetId: number) => {
-    if (reorderDragId === null || reorderDragId === targetId) return;
+  function handleReorderDragEnd(result: DropResult) {
+    if (!result.destination || result.destination.index === result.source.index) return;
     const ids = photos.map(p => p.id);
-    const fromIdx = ids.indexOf(reorderDragId);
-    const toIdx = ids.indexOf(targetId);
-    if (fromIdx === -1 || toIdx === -1) return;
-    const reordered = [...ids];
-    reordered.splice(fromIdx, 1);
-    reordered.splice(toIdx, 0, reorderDragId);
-    onReorderPhotos?.(reordered);
-    setReorderDragId(null);
-    setReorderOverId(null);
-  }, [reorderDragId, photos, onReorderPhotos]);
+    const [moved] = ids.splice(result.source.index, 1);
+    ids.splice(result.destination.index, 0, moved);
+    onReorderPhotos?.(ids);
+  }
+
+  if (onReorderPhotos) {
+    return (
+      <DragDropContext onDragEnd={handleReorderDragEnd}>
+        <Droppable droppableId="album-photos" direction="horizontal">
+          {(droppable) => (
+            <div
+              ref={droppable.innerRef}
+              {...droppable.droppableProps}
+              className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"
+            >
+              {photos.map((photo, index) => (
+                <Draggable key={photo.id} draggableId={String(photo.id)} index={index}>
+                  {(provided, snapshot) => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      className={`relative ${snapshot.isDragging ? 'opacity-60 ring-2 ring-primary rounded-lg' : ''}`}
+                    >
+                      <PhotoCard
+                        photo={photo}
+                        isAdmin={isAdmin}
+                        albums={albums}
+                        onDelete={onDelete}
+                        onSelect={onSelect}
+                        onSetCover={onSetCover}
+                        onUpdate={onUpdate}
+                        onAddToAlbum={onAddToAlbum}
+                        deleteLabel={deleteLabel}
+                        draggable={false}
+                        showDetails={showDetails}
+                      />
+                      <div
+                        {...provided.dragHandleProps}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute top-1 left-1 z-20 rounded bg-black/60 p-0.5 text-white/80 hover:text-white cursor-grab active:cursor-grabbing"
+                      >
+                        <GripVertical size={12} />
+                      </div>
+                    </div>
+                  )}
+                </Draggable>
+              ))}
+              {droppable.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
+    );
+  }
 
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
       {photos.map((photo) => (
-        <div
+        <PhotoCard
           key={photo.id}
-          draggable={!!onReorderPhotos}
-          onDragStart={onReorderPhotos ? () => setReorderDragId(photo.id) : undefined}
-          onDragOver={onReorderPhotos ? (e) => { e.preventDefault(); setReorderOverId(photo.id); } : undefined}
-          onDrop={onReorderPhotos ? () => handleReorderDrop(photo.id) : undefined}
-          onDragEnd={onReorderPhotos ? () => { setReorderDragId(null); setReorderOverId(null); } : undefined}
-          className={onReorderPhotos && reorderOverId === photo.id && reorderDragId !== photo.id ? 'ring-2 ring-primary rounded-lg' : undefined}
-        >
-          <PhotoCard
-            photo={photo}
-            isAdmin={isAdmin}
-            albums={albums}
-            onDelete={onDelete}
-            onSelect={onSelect}
-            onSetCover={onSetCover}
-            onUpdate={onUpdate}
-            onAddToAlbum={onAddToAlbum}
-            onPhotoDragStart={onPhotoDragStart}
-            onPhotoDragEnd={onPhotoDragEnd}
-            deleteLabel={deleteLabel}
-            draggable={draggable}
-            showDetails={showDetails}
-          />
-        </div>
+          photo={photo}
+          isAdmin={isAdmin}
+          albums={albums}
+          onDelete={onDelete}
+          onSelect={onSelect}
+          onSetCover={onSetCover}
+          onUpdate={onUpdate}
+          onAddToAlbum={onAddToAlbum}
+          onPhotoDragStart={onPhotoDragStart}
+          onPhotoDragEnd={onPhotoDragEnd}
+          deleteLabel={deleteLabel}
+          draggable={draggable}
+          showDetails={showDetails}
+        />
       ))}
     </div>
   );
