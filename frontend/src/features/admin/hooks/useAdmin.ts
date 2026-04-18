@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import axios from 'axios';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
 import type { UserAdminUpdate, InviteCodeCreate, SmtpConfig } from '@/types/api';
@@ -35,18 +36,23 @@ export function useDeleteInviteCode() {
   });
 }
 
+function apiErrorMessage(err: unknown, fallback: string): string {
+  if (axios.isAxiosError(err)) {
+    const detail = err.response?.data?.detail;
+    if (typeof detail === 'string') return detail;
+  }
+  return fallback;
+}
+
 export function useSendInvite() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ email, name }: { email: string; name: string }) => adminApi.sendInvite(email, name),
-    onSuccess: (data) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'invite-codes'] });
-      if (data.email_sent) {
-        toast('Invitation email sent', 'success');
-      } else {
-        toast('Code created — email not sent (SMTP not configured)', 'error');
-      }
+      toast('Invitation email sent', 'success');
     },
+    onError: (err) => toast(apiErrorMessage(err, 'Failed to send invitation'), 'error'),
   });
 }
 
@@ -75,6 +81,6 @@ export function useTestSmtpConfig() {
   return useMutation({
     mutationFn: adminApi.testSmtpConfig,
     onSuccess: (data) => toast(data.message, 'success'),
-    onError: () => toast('Test email failed — check server logs', 'error'),
+    onError: (err) => toast(apiErrorMessage(err, 'Test email failed'), 'error'),
   });
 }

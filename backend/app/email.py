@@ -32,28 +32,37 @@ def get_smtp_config(db: 'Session | None' = None) -> dict:
     return config
 
 
-def send_email(to: str, subject: str, html: str, db: 'Session | None' = None) -> bool:
+def send_email(to: str, subject: str, html: str, db: 'Session | None' = None) -> tuple[bool, str]:
+    """Returns (success, error_message). error_message is empty on success."""
     cfg = get_smtp_config(db)
     if not cfg['smtp_host'] or not cfg['smtp_user']:
-        print(f"[EMAIL] Not configured. Would send to {to}: {subject}")
-        return False
+        msg = "SMTP not configured — set SMTP host and username in Admin > SMTP/Email"
+        print(f"[EMAIL] {msg}")
+        return False, msg
     try:
         msg = MIMEMultipart("alternative")
         msg["Subject"] = subject
         msg["From"] = f"{cfg['from_name']} <{cfg['from_email']}>"
         msg["To"] = to
         msg.attach(MIMEText(html, "html"))
-        with smtplib.SMTP(cfg['smtp_host'], cfg['smtp_port']) as s:
-            s.starttls()
-            s.login(cfg['smtp_user'], cfg['smtp_password'])
-            s.sendmail(cfg['from_email'], to, msg.as_string())
-        return True
+        port = cfg['smtp_port']
+        if port == 465:
+            with smtplib.SMTP_SSL(cfg['smtp_host'], port) as s:
+                s.login(cfg['smtp_user'], cfg['smtp_password'])
+                s.sendmail(cfg['from_email'], to, msg.as_string())
+        else:
+            with smtplib.SMTP(cfg['smtp_host'], port) as s:
+                s.starttls()
+                s.login(cfg['smtp_user'], cfg['smtp_password'])
+                s.sendmail(cfg['from_email'], to, msg.as_string())
+        print(f"[EMAIL] Sent to {to}: {subject}")
+        return True, ""
     except Exception as e:
-        print(f"[EMAIL] Failed: {e}")
-        return False
+        print(f"[EMAIL] Failed sending to {to}: {e}")
+        return False, str(e)
 
 
-def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | None' = None) -> bool:
+def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | None' = None) -> tuple[bool, str]:
     cfg = get_smtp_config(db)
     site_url = cfg['site_url']
     link = f"{site_url}/register?code={code}"
@@ -84,4 +93,4 @@ def notify_admin_new_registration(username: str, email: str, db: 'Session | None
         f"<h2>New Registration</h2><p><b>Username:</b> {username}<br><b>Email:</b> {email or 'not provided'}</p>"
         f"<p><a href='{site_url}/admin'>View Admin Panel</a></p>",
         db,
-    )
+    )  # fire-and-forget; ignore result

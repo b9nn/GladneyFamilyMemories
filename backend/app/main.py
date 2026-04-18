@@ -156,9 +156,11 @@ def send_invite(payload: InviteEmailRequest, db: Session = Depends(get_db), cu: 
     db.add(code)
     db.commit()
     db.refresh(code)
-    sent = email_mod.send_invite_email(payload.email, payload.name, code.code, db)
+    sent, err = email_mod.send_invite_email(payload.email, payload.name, code.code, db)
+    if not sent:
+        raise HTTPException(400, err or "Failed to send invitation email")
     result = InviteCodeResponse.model_validate(code)
-    result.email_sent = sent
+    result.email_sent = True
     return result
 
 
@@ -243,14 +245,14 @@ def test_smtp_config(db: Session = Depends(get_db), cu: models.User = Depends(ge
     test_to = cfg['admin_email'] or cu.email
     if not test_to:
         raise HTTPException(400, "No recipient email — set Admin Email in SMTP config")
-    sent = email_mod.send_email(
+    sent, err = email_mod.send_email(
         test_to,
         "Test email from Gladney Family Tree",
         "<h2>SMTP test</h2><p>If you received this, your SMTP configuration is working correctly.</p>",
         db,
     )
     if not sent:
-        raise HTTPException(500, "Failed to send test email — check server logs")
+        raise HTTPException(500, err or "Failed to send test email")
     return {"message": f"Test email sent to {test_to}"}
 
 
