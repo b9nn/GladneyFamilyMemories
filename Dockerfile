@@ -6,6 +6,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 RUN npm ci
 COPY frontend/ ./
+# GIT_SHA busts the build cache so every deploy rebuilds the frontend
+ARG GIT_SHA=unknown
 RUN npm run build
 
 # --- backend runtime ---
