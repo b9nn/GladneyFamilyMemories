@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useDashboardStats } from './hooks/useDashboard';
@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
 import type { InviteCode } from '@/types/api';
+import { useUploadBackground } from '@/features/admin/hooks/useAdmin';
 
 interface StatCardProps {
   label: string;
@@ -22,6 +23,47 @@ function StatCard({ label, value, to }: StatCardProps) {
       <p className="text-3xl font-bold text-foreground">{value}</p>
       <p className="mt-1 text-sm text-muted-foreground">{label}</p>
     </Link>
+  );
+}
+
+function BackgroundSection() {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const uploadBg = useUploadBackground();
+  const [error, setError] = useState('');
+
+  async function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setError('');
+    try {
+      await uploadBg.mutateAsync(file);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Upload failed');
+    }
+    e.target.value = '';
+  }
+
+  return (
+    <div className="mt-6 rounded-lg border border-border bg-card p-6 space-y-3">
+      <h2 className="text-base font-semibold text-foreground">Page Background</h2>
+      {error && (
+        <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">{error}</div>
+      )}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploadBg.isPending}
+          className="rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
+        >
+          {uploadBg.isPending ? 'Uploading…' : 'Upload background image'}
+        </button>
+        {uploadBg.isSuccess && (
+          <span className="text-sm text-green-600 dark:text-green-400">Updated successfully</span>
+        )}
+        <input ref={fileRef} type="file" accept="image/*,.heic,.heif" className="hidden" onChange={handleChange} />
+      </div>
+      <p className="text-xs text-muted-foreground">Shown on all pages. Recommended: landscape, at least 1200×400px.</p>
+    </div>
   );
 }
 
@@ -151,6 +193,7 @@ export function DashboardPage() {
         </div>
       )}
 
+      {isAdmin && <BackgroundSection />}
       {isAdmin && <InviteSection />}
     </div>
   );
