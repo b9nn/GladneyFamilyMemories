@@ -125,7 +125,7 @@ export function VignetteCard({ vignette, isAdmin, onEdit, onDelete, onRename }: 
             />
           ) : (
             <h3
-              className={`text-lg font-semibold text-foreground leading-tight ${isAdmin ? 'cursor-text hover:text-primary transition-colors' : ''}`}
+              className={`text-lg font-semibold text-red-500 leading-tight ${isAdmin ? 'cursor-text hover:text-red-400 transition-colors' : ''}`}
               title={isAdmin ? 'Click to rename' : undefined}
               onClick={isAdmin ? (e) => { e.stopPropagation(); startEdit(); } : undefined}
             >
