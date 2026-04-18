@@ -103,6 +103,7 @@ class AlbumPhoto(Base):
     album_id = Column(Integer, ForeignKey("albums.id"), nullable=False)
     photo_id = Column(Integer, ForeignKey("photos.id"), nullable=False)
     added_at = Column(DateTime(timezone=True), server_default=func.now())
+    sort_order = Column(Integer, default=0)
 
     album = relationship("Album", back_populates="album_photos")
     photo = relationship("Photo", back_populates="album_photos")

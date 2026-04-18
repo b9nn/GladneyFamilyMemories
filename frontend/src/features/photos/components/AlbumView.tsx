@@ -1,6 +1,6 @@
 import type { Album, Photo } from '@/types/api';
 import { PhotoGrid } from './PhotoGrid';
-import { useAlbumPhotos, useRemovePhotoFromAlbum, useAddPhotoToAlbum, useSetAlbumCover } from '../hooks/useAlbums';
+import { useAlbumPhotos, useRemovePhotoFromAlbum, useAddPhotoToAlbum, useSetAlbumCover, useReorderAlbumPhotos } from '../hooks/useAlbums';
 import { usePhotos } from '../hooks/usePhotos';
 import { useState } from 'react';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
@@ -18,6 +18,7 @@ export function AlbumView({ album, onBack, onLightbox }: AlbumViewProps) {
   const removePhoto = useRemovePhotoFromAlbum();
   const addPhoto = useAddPhotoToAlbum();
   const setCover = useSetAlbumCover();
+  const reorderPhotos = useReorderAlbumPhotos(album.id);
   const [showAddPanel, setShowAddPanel] = useState(false);
 
   const albumPhotoIds = new Set(albumPhotos?.map((p) => p.id) ?? []);
@@ -106,6 +107,7 @@ export function AlbumView({ album, onBack, onLightbox }: AlbumViewProps) {
           onSelect={(photo) => onLightbox(albumPhotos, photo)}
           onSetCover={isAdmin ? (photo) => setCover.mutate({ albumId: album.id, photoId: photo.id }) : undefined}
           deleteLabel="Remove"
+          onReorderPhotos={isAdmin ? (orderedIds) => reorderPhotos.mutate(orderedIds.map((id, i) => ({ photo_id: id, sort_order: i }))) : undefined}
         />
       )}
     </div>

@@ -115,6 +115,10 @@ class AlbumReorderItem(BaseModel):
     id: int
     sort_order: int
 
+class AlbumPhotoReorderItem(BaseModel):
+    photo_id: int
+    sort_order: int
+
 class AlbumResponse(BaseModel):
     id: int
     name: str

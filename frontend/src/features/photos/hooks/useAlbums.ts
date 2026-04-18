@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { albumsApi } from '@/lib/api/albums';
 import { toast } from '@/stores/toast-store';
-import type { Album, AlbumCreate, AlbumUpdate } from '@/types/api';
+import type { Album, AlbumCreate, AlbumUpdate, Photo } from '@/types/api';
 
 const KEY = ['albums'];
 const albumPhotosKey = (id: number) => ['albums', id, 'photos'];
@@ -69,6 +69,28 @@ export function useSetAlbumCover() {
     mutationFn: ({ albumId, photoId }: { albumId: number; photoId: number }) =>
       albumsApi.setCover(albumId, photoId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: KEY }); toast('Cover photo updated', 'success'); },
+  });
+}
+
+export function useReorderAlbumPhotos(albumId: number) {
+  const qc = useQueryClient();
+  const key = albumPhotosKey(albumId);
+  return useMutation({
+    mutationFn: (items: { photo_id: number; sort_order: number }[]) =>
+      albumsApi.reorderPhotos(albumId, items),
+    onMutate: async (items) => {
+      await qc.cancelQueries({ queryKey: key });
+      const previous = qc.getQueryData<Photo[]>(key);
+      if (previous) {
+        const orderMap = new Map(items.map(i => [i.photo_id, i.sort_order]));
+        qc.setQueryData<Photo[]>(key, [...previous].sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0)));
+      }
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.previous) qc.setQueryData(key, ctx.previous);
+    },
+    onSettled: () => { qc.invalidateQueries({ queryKey: key }); },
   });
 }
 

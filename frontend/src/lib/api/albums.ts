@@ -10,4 +10,6 @@ export const albumsApi = {
   addPhoto: (albumId: number, photoId: number) => client.post(`/api/albums/${albumId}/photos/${photoId}`).then(r => r.data),
   removePhoto: (albumId: number, photoId: number) => client.delete(`/api/albums/${albumId}/photos/${photoId}`).then(r => r.data),
   setCover: (albumId: number, photoId: number) => client.put<Album>(`/api/albums/${albumId}/cover/${photoId}`).then(r => r.data),
+  reorderPhotos: (albumId: number, items: { photo_id: number; sort_order: number }[]) =>
+    client.put(`/api/albums/${albumId}/photos/reorder`, items).then(r => r.data),
 }

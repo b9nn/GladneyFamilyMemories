@@ -440,12 +440,24 @@ def album_photos(aid: int, db: Session = Depends(get_db), _: models.User = Depen
     a = db.query(models.Album).filter(models.Album.id == aid).first()
     if not a:
         raise HTTPException(404, "Not found")
+    sorted_aps = sorted(a.album_photos, key=lambda ap: (ap.sort_order, ap.id))
     result = []
-    for ap in a.album_photos:
+    for ap in sorted_aps:
         d = PhotoResponse.model_validate(ap.photo)
         d.url = get_file_url(ap.photo.file_path)
         result.append(d)
     return result
+
+
+@app.put("/api/albums/{aid}/photos/reorder")
+def reorder_album_photos(aid: int, items: List[AlbumPhotoReorderItem], db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    for item in items:
+        db.query(models.AlbumPhoto).filter(
+            models.AlbumPhoto.album_id == aid,
+            models.AlbumPhoto.photo_id == item.photo_id,
+        ).update({"sort_order": item.sort_order})
+    db.commit()
+    return {"message": "Reordered"}
 
 
 @app.post("/api/albums/{aid}/photos/{pid}")

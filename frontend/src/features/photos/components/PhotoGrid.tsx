@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { formatDate } from '@/lib/utils/date';
 import type { Album, Photo, PhotoUpdate } from '@/types/api';
 
@@ -16,6 +16,7 @@ interface PhotoGridProps {
   deleteLabel?: string;
   draggable?: boolean;
   showDetails?: boolean;
+  onReorderPhotos?: (orderedIds: number[]) => void;
 }
 
 interface PhotoCardProps {
@@ -284,26 +285,52 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
 
-export function PhotoGrid({ photos, isAdmin = false, albums, onDelete, onSelect, onSetCover, onUpdate, onAddToAlbum, onPhotoDragStart, onPhotoDragEnd, deleteLabel = 'Delete', draggable = false, showDetails = false }: PhotoGridProps) {
+export function PhotoGrid({ photos, isAdmin = false, albums, onDelete, onSelect, onSetCover, onUpdate, onAddToAlbum, onPhotoDragStart, onPhotoDragEnd, deleteLabel = 'Delete', draggable = false, showDetails = false, onReorderPhotos }: PhotoGridProps) {
+  const [reorderDragId, setReorderDragId] = useState<number | null>(null);
+  const [reorderOverId, setReorderOverId] = useState<number | null>(null);
+
+  const handleReorderDrop = useCallback((targetId: number) => {
+    if (reorderDragId === null || reorderDragId === targetId) return;
+    const ids = photos.map(p => p.id);
+    const fromIdx = ids.indexOf(reorderDragId);
+    const toIdx = ids.indexOf(targetId);
+    if (fromIdx === -1 || toIdx === -1) return;
+    const reordered = [...ids];
+    reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, reorderDragId);
+    onReorderPhotos?.(reordered);
+    setReorderDragId(null);
+    setReorderOverId(null);
+  }, [reorderDragId, photos, onReorderPhotos]);
+
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
       {photos.map((photo) => (
-        <PhotoCard
+        <div
           key={photo.id}
-          photo={photo}
-          isAdmin={isAdmin}
-          albums={albums}
-          onDelete={onDelete}
-          onSelect={onSelect}
-          onSetCover={onSetCover}
-          onUpdate={onUpdate}
-          onAddToAlbum={onAddToAlbum}
-          onPhotoDragStart={onPhotoDragStart}
-          onPhotoDragEnd={onPhotoDragEnd}
-          deleteLabel={deleteLabel}
-          draggable={draggable}
-          showDetails={showDetails}
-        />
+          draggable={!!onReorderPhotos}
+          onDragStart={onReorderPhotos ? () => setReorderDragId(photo.id) : undefined}
+          onDragOver={onReorderPhotos ? (e) => { e.preventDefault(); setReorderOverId(photo.id); } : undefined}
+          onDrop={onReorderPhotos ? () => handleReorderDrop(photo.id) : undefined}
+          onDragEnd={onReorderPhotos ? () => { setReorderDragId(null); setReorderOverId(null); } : undefined}
+          className={onReorderPhotos && reorderOverId === photo.id && reorderDragId !== photo.id ? 'ring-2 ring-primary rounded-lg' : undefined}
+        >
+          <PhotoCard
+            photo={photo}
+            isAdmin={isAdmin}
+            albums={albums}
+            onDelete={onDelete}
+            onSelect={onSelect}
+            onSetCover={onSetCover}
+            onUpdate={onUpdate}
+            onAddToAlbum={onAddToAlbum}
+            onPhotoDragStart={onPhotoDragStart}
+            onPhotoDragEnd={onPhotoDragEnd}
+            deleteLabel={deleteLabel}
+            draggable={draggable}
+            showDetails={showDetails}
+          />
+        </div>
       ))}
     </div>
   );
