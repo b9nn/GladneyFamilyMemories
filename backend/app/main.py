@@ -386,7 +386,8 @@ def list_albums(db: Session = Depends(get_db), _: models.User = Depends(get_curr
         d = AlbumResponse.model_validate(a)
         d.photo_count = len(a.album_photos)
         if not d.background_image and a.album_photos:
-            d.background_image = get_file_url(a.album_photos[0].photo.file_path)
+            latest = max(a.album_photos, key=lambda ap: ap.added_at or ap.id)
+            d.background_image = get_file_url(latest.photo.file_path)
         result.append(d)
     return result
 
