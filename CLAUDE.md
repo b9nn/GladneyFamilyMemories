@@ -1,5 +1,5 @@
 # Gladney Family Tree — CLAUDE.md
-> Last updated: 2026-03-23 | Branch: clean-start
+> Last updated: 2026-04-18 | Branch: main
 
 Private family memories web app at **mrtag.com**. Family members store, browse, and connect written stories (vignettes), photos, video, audio, and documents — tied together with a family tree, timeline, and full-text search.
 
@@ -27,7 +27,7 @@ Private family memories web app at **mrtag.com**. Family members store, browse, 
 | Backend | FastAPI | 0.115 |
 | ORM | SQLAlchemy | 2.0 |
 | Migrations | Alembic | latest |
-| DB (prod) | PostgreSQL 15 | via Render |
+| DB (prod) | PostgreSQL 15 | via Fly.io |
 | DB (dev) | SQLite | local |
 | DB driver | psycopg 3 | latest |
 | Auth | python-jose (JWT) + bcrypt | latest |
@@ -130,7 +130,7 @@ Private family memories web app at **mrtag.com**. Family members store, browse, 
 ### Git
 - Commit messages: imperative mood ("Add vignette card component")
 - One logical change per commit
-- Development branch: `clean-start` → merge to `main` for production
+- Push to `main` triggers Fly.io deploy via GitHub Actions (`fly-deploy.yml`)
 
 ---
 
@@ -156,13 +156,20 @@ npm run preview      # preview production build
 # shadcn/ui — add components (lands in src/components/ui/)
 npx shadcn@latest add button card dialog input label select textarea
 npx shadcn@latest add skeleton separator dropdown-menu command badge
+
+# Fly.io (production)
+fly status                        # check app status (gladney-family-tree)
+fly logs                          # tail live logs
+fly ssh console                   # SSH into running machine
+fly secrets set KEY=value         # set environment variable
+fly deploy                        # manual deploy (CI does this automatically)
 ```
 
 ---
 
 ## Key Architecture Decisions
 
-**Same-origin API in production**: Frontend and backend run on the same Render service. `VITE_API_URL=""` in production so API calls go to `/api/...` on the same origin. Never hardcode an absolute API URL in components.
+**Same-origin API in production**: Frontend and backend run on the same Fly.io app (`gladney-family-tree`, region `iad`). `VITE_API_URL=""` in production so API calls go to `/api/...` on the same origin. Never hardcode an absolute API URL in components. CD is via GitHub Actions (`fly-deploy.yml`) — push to `main` triggers a deploy automatically.
 
 **Dual DB mode**: `database.py` detects `DATABASE_URL` env var — if set → PostgreSQL (prod); if absent → SQLite file at `./tag_diary.db` (dev). Use SQLAlchemy abstractions only, no raw SQL.
 
