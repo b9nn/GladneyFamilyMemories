@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
 import type { InviteCode } from '@/types/api';
-import { useAdminUsers } from '@/features/admin/hooks/useAdmin';
+import { useAdminUsers, useDeleteUser } from '@/features/admin/hooks/useAdmin';
 import { formatDate } from '@/lib/utils/date';
 import { useUploadBackground } from '@/features/admin/hooks/useAdmin';
 
@@ -166,6 +166,13 @@ function InviteSection() {
 
 function UserListSection() {
   const { data: users, isLoading } = useAdminUsers();
+  const deleteUser = useDeleteUser();
+  const { user: currentUser } = useAuthStore();
+
+  function handleDelete(id: number, name: string) {
+    if (!confirm(`Remove ${name} from the website? This cannot be undone.`)) return;
+    deleteUser.mutate(id);
+  }
 
   return (
     <div className="mt-10 rounded-lg border border-border bg-card p-6">
@@ -189,7 +196,17 @@ function UserListSection() {
                 </p>
                 {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
               </div>
-              <p className="text-xs text-muted-foreground flex-shrink-0">Joined {formatDate(u.created_at)}</p>
+              <div className="flex items-center gap-4 flex-shrink-0">
+                <p className="text-xs text-muted-foreground">Joined {formatDate(u.created_at)}</p>
+                {u.id !== currentUser?.id && (
+                  <button
+                    onClick={() => handleDelete(u.id, u.full_name ?? u.username)}
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </div>
           ))}
         </div>

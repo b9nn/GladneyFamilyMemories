@@ -16,6 +16,15 @@ export function useUpdateUser() {
   });
 }
 
+export function useDeleteUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => adminApi.deleteUser(id),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'users'] }); toast('User removed', 'success'); },
+    onError: (err) => toast(apiErrorMessage(err, 'Failed to remove user'), 'error'),
+  });
+}
+
 export function useInviteCodes() {
   return useQuery({ queryKey: ['admin', 'invite-codes'], queryFn: adminApi.listInviteCodes });
 }
