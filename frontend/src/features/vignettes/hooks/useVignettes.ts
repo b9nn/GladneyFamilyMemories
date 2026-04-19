@@ -32,3 +32,19 @@ export function useDeleteVignette() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: KEY }); toast('Vignette deleted', 'success'); },
   });
 }
+
+export function useAttachVignettePhoto(vignetteId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (file: File) => vignettesApi.attachPhoto(vignetteId, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
+export function useDetachVignettePhoto(vignetteId: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (vpId: number) => vignettesApi.detachPhoto(vignetteId, vpId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}

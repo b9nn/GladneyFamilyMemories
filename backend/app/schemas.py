@@ -68,6 +68,12 @@ class VignetteUpdate(BaseModel):
     content: Optional[str] = None
     sort_order: Optional[int] = None
 
+class VignettePhotoItem(BaseModel):
+    id: int
+    photo_id: int
+    url: Optional[str] = None
+    model_config = {"from_attributes": True}
+
 class VignetteResponse(BaseModel):
     id: int
     title: str
@@ -76,6 +82,7 @@ class VignetteResponse(BaseModel):
     sort_order: int
     created_at: datetime
     updated_at: datetime
+    photos: List["VignettePhotoItem"] = []
     model_config = {"from_attributes": True}
 
 

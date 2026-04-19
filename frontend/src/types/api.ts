@@ -10,7 +10,8 @@ export interface PasswordChange { current_password: string; new_password: string
 export interface InviteCode { id: number; code: string; email: string | null; used_by_id: number | null; expires_at: string | null; created_at: string; email_sent?: boolean | null }
 export interface InviteCodeCreate { email?: string; expires_at?: string }
 
-export interface Vignette { id: number; title: string; content: string | null; author_id: number; sort_order: number; created_at: string; updated_at: string }
+export interface VignettePhoto { id: number; photo_id: number; url: string | null }
+export interface Vignette { id: number; title: string; content: string | null; author_id: number; sort_order: number; created_at: string; updated_at: string; photos: VignettePhoto[] }
 export interface VignetteCreate { title: string; content?: string }
 export interface VignetteUpdate { title?: string; content?: string; sort_order?: number }
 

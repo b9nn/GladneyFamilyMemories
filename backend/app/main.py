@@ -289,9 +289,19 @@ def dashboard_background(db: Session = Depends(get_db), _: models.User = Depends
 
 # ── Vignettes ─────────────────────────────────────────────────────────────────
 
+def _populate_vignette_photos(v: models.Vignette) -> VignetteResponse:
+    d = VignetteResponse.model_validate(v)
+    d.photos = [
+        VignettePhotoItem(id=vp.id, photo_id=vp.photo_id, url=get_file_url(vp.photo.file_path) if vp.photo else None)
+        for vp in v.vignette_photos
+    ]
+    return d
+
+
 @app.get("/api/vignettes", response_model=List[VignetteResponse])
 def list_vignettes(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    return db.query(models.Vignette).order_by(models.Vignette.sort_order, models.Vignette.created_at.desc()).all()
+    vignettes = db.query(models.Vignette).order_by(models.Vignette.sort_order, models.Vignette.created_at.desc()).all()
+    return [_populate_vignette_photos(v) for v in vignettes]
 
 
 @app.post("/api/vignettes", response_model=VignetteResponse)
@@ -300,7 +310,7 @@ def create_vignette(payload: VignetteCreate, db: Session = Depends(get_db), cu: 
     db.add(v)
     db.commit()
     db.refresh(v)
-    return v
+    return _populate_vignette_photos(v)
 
 
 @app.get("/api/vignettes/{vid}", response_model=VignetteResponse)
@@ -308,7 +318,7 @@ def get_vignette(vid: int, db: Session = Depends(get_db), _: models.User = Depen
     v = db.query(models.Vignette).filter(models.Vignette.id == vid).first()
     if not v:
         raise HTTPException(404, "Not found")
-    return v
+    return _populate_vignette_photos(v)
 
 
 @app.put("/api/vignettes/{vid}", response_model=VignetteResponse)
@@ -320,7 +330,7 @@ def update_vignette(vid: int, payload: VignetteUpdate, db: Session = Depends(get
         setattr(v, field, val)
     db.commit()
     db.refresh(v)
-    return v
+    return _populate_vignette_photos(v)
 
 
 @app.delete("/api/vignettes/{vid}")
@@ -331,6 +341,39 @@ def delete_vignette(vid: int, db: Session = Depends(get_db), _: models.User = De
     db.delete(v)
     db.commit()
     return {"message": "Deleted"}
+
+
+@app.post("/api/vignettes/{vid}/photos", response_model=VignettePhotoItem)
+async def attach_vignette_photo(vid: int, file: UploadFile = F(...), db: Session = Depends(get_db), cu: models.User = Depends(get_current_user)):
+    v = db.query(models.Vignette).filter(models.Vignette.id == vid).first()
+    if not v:
+        raise HTTPException(404, "Vignette not found")
+    contents = await file.read()
+    file_path, _ = upload_file(contents, file.filename or "photo", file.content_type or "image/jpeg", folder="photos")
+    photo = models.Photo(filename=file.filename or "photo", file_path=file_path, uploaded_by_id=cu.id)
+    db.add(photo)
+    db.flush()
+    vp = models.VignettePhoto(vignette_id=vid, photo_id=photo.id)
+    db.add(vp)
+    db.commit()
+    db.refresh(vp)
+    return VignettePhotoItem(id=vp.id, photo_id=photo.id, url=get_file_url(file_path))
+
+
+@app.delete("/api/vignettes/{vid}/photos/{vp_id}", status_code=204)
+def detach_vignette_photo(vid: int, vp_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    vp = db.query(models.VignettePhoto).filter(
+        models.VignettePhoto.id == vp_id,
+        models.VignettePhoto.vignette_id == vid,
+    ).first()
+    if not vp:
+        raise HTTPException(404, "Not found")
+    photo = vp.photo
+    db.delete(vp)
+    if photo:
+        delete_file(photo.file_path)
+        db.delete(photo)
+    db.commit()
 
 
 # ── Photos ────────────────────────────────────────────────────────────────────

@@ -22,11 +22,11 @@ export function VignettesPage() {
   function handleEdit(v: Vignette) { setEditing(v); setMode('edit'); }
   function handleDelete(id: number) { if (!confirm('Delete this vignette?')) return; remove.mutate(id); }
   function handleRename(id: number, title: string) { update.mutate({ id, data: { title } }); }
-  async function handleCreate(title: string, content: string) { await create.mutateAsync({ title, content }); setMode('list'); }
+  async function handleCreate(title: string, content: string) { const v = await create.mutateAsync({ title, content }); setMode('list'); return v; }
   async function handleUpdate(title: string, content: string) {
-    if (!editing) return;
-    await update.mutateAsync({ id: editing.id, data: { title, content } });
-    setMode('list'); setEditing(null);
+    if (!editing) return editing!;
+    const v = await update.mutateAsync({ id: editing.id, data: { title, content } });
+    setMode('list'); setEditing(null); return v;
   }
 
   if (mode === 'create') return (

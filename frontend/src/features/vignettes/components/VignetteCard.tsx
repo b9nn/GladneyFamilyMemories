@@ -71,6 +71,21 @@ function VignetteModal({ vignette, onClose }: { vignette: Vignette; onClose: () 
             <p className="text-muted-foreground italic">No content yet.</p>
           )}
         </div>
+
+        {/* Photos */}
+        {vignette.photos?.length > 0 && (
+          <div className="px-8 pb-8 flex flex-wrap gap-3">
+            {vignette.photos.map((vp) => vp.url && (
+              <img
+                key={vp.id}
+                src={vp.url}
+                alt=""
+                className="h-40 w-auto max-w-full rounded-md object-cover border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => window.open(vp.url!, '_blank')}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -144,6 +159,18 @@ export function VignetteCard({ vignette, isAdmin, onEdit, onDelete, onRename }: 
             className="prose prose-sm dark:prose-invert max-w-none line-clamp-6 text-muted-foreground"
             dangerouslySetInnerHTML={{ __html: html }}
           />
+        )}
+        {vignette.photos?.length > 0 && (
+          <div className="flex gap-1.5 flex-wrap">
+            {vignette.photos.slice(0, 4).map((vp) => vp.url && (
+              <img key={vp.id} src={vp.url} alt="" className="h-14 w-14 rounded object-cover border border-border" />
+            ))}
+            {vignette.photos.length > 4 && (
+              <div className="h-14 w-14 rounded border border-border bg-muted flex items-center justify-center text-xs text-muted-foreground">
+                +{vignette.photos.length - 4}
+              </div>
+            )}
+          </div>
         )}
         <p className="text-xs text-muted-foreground">{formatDate(vignette.created_at)}</p>
       </div>
