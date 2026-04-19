@@ -68,17 +68,19 @@ def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | Non
     link = f"{site_url}/register?code={code}"
     html = f"""
     <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
-      <h2 style="color:#1a1a1a;">You're invited to the Gladney Family Tree</h2>
       <p>Hi {to_name},</p>
-      <p>You've been invited to join the Gladney Family Tree — a private site where our family shares stories, photos, audio memories, and more.</p>
+      <p>This is your invitation to 'Lorna and Tom's Memories' website.</p>
+      <p>We have included vignettes of our memories, some photos, and a few interesting historical files.</p>
+      <p>At some point you might be interested to know more about us, we hope!</p>
       <p style="margin:24px 0;">
         <a href="{link}" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Accept Invitation</a>
       </p>
       <p style="color:#666;font-size:13px;">Or copy this link: <a href="{link}">{link}</a></p>
       <p style="color:#666;font-size:13px;">This invitation code can only be used once.</p>
+      <p>Lorna and Tom</p>
     </div>
     """
-    return send_email(to_email, "You're invited to the Gladney Family Tree", html, db)
+    return send_email(to_email, "Your invitation to Lorna and Tom's Memories", html, db)
 
 
 def notify_admin_new_registration(username: str, email: str, db: 'Session | None' = None) -> None:
