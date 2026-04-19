@@ -258,7 +258,7 @@ export function FilesPage() {
               onClick={() => { if (file.url) setViewing(file); }}
             >
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-yellow-400 truncate">
+                <p className="text-base font-semibold text-yellow-400 truncate">
                   {file.title ?? file.filename}
                 </p>
                 {file.description && (
