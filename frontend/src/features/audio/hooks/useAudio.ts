@@ -24,3 +24,11 @@ export function useDeleteAudio() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: KEY }); toast('Recording deleted', 'success'); },
   });
 }
+
+export function useUpdateAudio() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, title }: { id: number; title: string }) => audioApi.update(id, { title }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: KEY }); toast('Title updated', 'success'); },
+  });
+}
