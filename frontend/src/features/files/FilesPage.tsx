@@ -250,17 +250,22 @@ export function FilesPage() {
           ) : undefined}
         />
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="flex flex-col gap-3">
           {files.map((file) => (
             <div
               key={file.id}
-              className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition-colors text-center cursor-pointer"
+              className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-5 py-4 hover:bg-accent/50 transition-colors cursor-pointer"
               onClick={() => { if (file.url) setViewing(file); }}
             >
-              <p className="text-sm font-medium text-foreground truncate w-full">
-                {file.title ?? file.filename}
-              </p>
-              <div className="flex gap-3 mt-auto pt-2" onClick={(e) => e.stopPropagation()}>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-foreground truncate">
+                  {file.title ?? file.filename}
+                </p>
+                {file.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{file.description}</p>
+                )}
+              </div>
+              <div className="flex gap-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                 {file.url && (
                   <a
                     href={file.url}
@@ -291,6 +296,7 @@ export function FilesPage() {
             </div>
           ))}
         </div>
+
       )}
 
       {viewing && <FileViewer file={viewing} onClose={() => setViewing(null)} />}
