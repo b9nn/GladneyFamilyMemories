@@ -101,6 +101,20 @@ def change_password(payload: PasswordChange, current_user: models.User = Depends
 
 # ── Bootstrap (create first admin) ───────────────────────────────────────────
 
+@app.post("/api/admin/reset-admin-credentials")
+def reset_admin_credentials(username: str = Form(...), password: str = Form(...), secret: str = Form(...), db: Session = Depends(get_db)):
+    bs = os.getenv("BOOTSTRAP_SECRET", "")
+    if not bs or secret != bs:
+        raise HTTPException(403, "Invalid bootstrap secret")
+    admin = db.query(models.User).filter(models.User.is_admin == True).first()  # noqa: E712
+    if not admin:
+        raise HTTPException(404, "No admin user found")
+    admin.username = username
+    admin.hashed_password = hash_password(password)
+    db.commit()
+    return {"message": "Admin credentials updated"}
+
+
 @app.post("/api/admin/bootstrap")
 def bootstrap(username: str = Form(...), password: str = Form(...), secret: str = Form(...), db: Session = Depends(get_db)):
     bs = os.getenv("BOOTSTRAP_SECRET", "")
