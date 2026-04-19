@@ -33,6 +33,14 @@ export function useDeleteVignette() {
   });
 }
 
+export function useReorderVignettes() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: { id: number; sort_order: number }[]) => vignettesApi.reorder(items),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}
+
 export function useAttachVignettePhoto(vignetteId: number) {
   const qc = useQueryClient();
   return useMutation({

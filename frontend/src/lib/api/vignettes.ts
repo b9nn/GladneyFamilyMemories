@@ -12,4 +12,6 @@ export const vignettesApi = {
   },
   detachPhoto: (vignetteId: number, vpId: number) =>
     client.delete(`/api/vignettes/${vignetteId}/photos/${vpId}`).then(r => r.data),
+  reorder: (items: { id: number; sort_order: number }[]) =>
+    client.put('/api/vignettes/reorder', items).then(r => r.data),
 }

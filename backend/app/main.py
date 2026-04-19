@@ -304,6 +304,14 @@ def list_vignettes(db: Session = Depends(get_db), _: models.User = Depends(get_c
     return [_populate_vignette_photos(v) for v in vignettes]
 
 
+@app.put("/api/vignettes/reorder")
+def reorder_vignettes(items: List[VignetteReorderItem], db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    for item in items:
+        db.query(models.Vignette).filter(models.Vignette.id == item.id).update({"sort_order": item.sort_order})
+    db.commit()
+    return {"ok": True}
+
+
 @app.post("/api/vignettes", response_model=VignetteResponse)
 def create_vignette(payload: VignetteCreate, db: Session = Depends(get_db), cu: models.User = Depends(get_current_user)):
     v = models.Vignette(title=payload.title, content=payload.content, author_id=cu.id)

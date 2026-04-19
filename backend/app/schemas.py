@@ -59,6 +59,10 @@ class InviteCodeResponse(BaseModel):
 
 # ── Vignettes ─────────────────────────────────────────────────────────────────
 
+class VignetteReorderItem(BaseModel):
+    id: int
+    sort_order: int
+
 class VignetteCreate(BaseModel):
     title: str
     content: Optional[str] = None

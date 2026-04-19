@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { VignetteCard } from './components/VignetteCard';
 import { VignetteForm } from './components/VignetteForm';
-import { useVignettes, useCreateVignette, useUpdateVignette, useDeleteVignette } from './hooks/useVignettes';
+import { useVignettes, useCreateVignette, useUpdateVignette, useDeleteVignette, useReorderVignettes } from './hooks/useVignettes';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { Vignette } from '@/types/api';
 
@@ -14,6 +15,7 @@ export function VignettesPage() {
   const create = useCreateVignette();
   const update = useUpdateVignette();
   const remove = useDeleteVignette();
+  const reorder = useReorderVignettes();
   const isAdmin = useIsAdmin();
 
   const [mode, setMode] = useState<Mode>('list');
@@ -65,12 +67,40 @@ export function VignettesPage() {
           ) : undefined}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {vignettes.map((v) => (
-            <VignetteCard key={v.id} vignette={v} isAdmin={isAdmin}
-              onEdit={handleEdit} onRename={handleRename} onDelete={handleDelete} />
-          ))}
-        </div>
+        <DragDropContext onDragEnd={(result: DropResult) => {
+          if (!result.destination || result.destination.index === result.source.index || !isAdmin) return;
+          const reordered = Array.from(vignettes!);
+          const [moved] = reordered.splice(result.source.index, 1);
+          reordered.splice(result.destination.index, 0, moved);
+          reorder.mutate(reordered.map((v, i) => ({ id: v.id, sort_order: i })));
+        }}>
+          <Droppable droppableId="vignettes" direction="horizontal">
+            {(provided) => (
+              <div
+                ref={provided.innerRef}
+                {...provided.droppableProps}
+                className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4"
+              >
+                {vignettes!.map((v, index) => (
+                  <Draggable key={v.id} draggableId={String(v.id)} index={index} isDragDisabled={!isAdmin}>
+                    {(drag, snapshot) => (
+                      <div
+                        ref={drag.innerRef}
+                        {...drag.draggableProps}
+                        {...drag.dragHandleProps}
+                        className={snapshot.isDragging ? 'opacity-75 ring-2 ring-primary rounded-lg' : ''}
+                      >
+                        <VignetteCard vignette={v} isAdmin={isAdmin}
+                          onEdit={handleEdit} onRename={handleRename} onDelete={handleDelete} />
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+              </div>
+            )}
+          </Droppable>
+        </DragDropContext>
       )}
     </div>
   );
