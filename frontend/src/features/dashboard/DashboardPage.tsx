@@ -6,7 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
 import type { InviteCode } from '@/types/api';
-import { useAdminUsers, useDeleteUser } from '@/features/admin/hooks/useAdmin';
+import { useAdminUsers, useDeleteUser, useUpdateUser } from '@/features/admin/hooks/useAdmin';
 import { formatDate } from '@/lib/utils/date';
 import { useUploadBackground } from '@/features/admin/hooks/useAdmin';
 
@@ -166,17 +166,22 @@ function InviteSection() {
 
 function UserListSection() {
   const { data: users, isLoading } = useAdminUsers();
-  const deleteUser = useDeleteUser();
+  const deactivateUser = useDeleteUser();
+  const reactivateUser = useUpdateUser();
   const { user: currentUser } = useAuthStore();
 
-  function handleDelete(id: number, name: string) {
-    if (!confirm(`Remove ${name} from the website? This cannot be undone.`)) return;
-    deleteUser.mutate(id);
+  function handleDeactivate(id: number, name: string) {
+    if (!confirm(`Remove access for ${name}? They will not be able to log in.`)) return;
+    deactivateUser.mutate(id);
+  }
+
+  function handleReactivate(id: number) {
+    reactivateUser.mutate({ id, data: { is_active: true } });
   }
 
   return (
     <div className="mt-10 rounded-lg border border-border bg-card p-6">
-      <h2 className="text-base font-semibold text-foreground mb-4">Current Members</h2>
+      <h2 className="text-base font-semibold text-foreground mb-4">All Members</h2>
       {isLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -186,25 +191,37 @@ function UserListSection() {
       ) : (
         <div className="divide-y divide-border rounded-md border border-border">
           {users?.map((u) => (
-            <div key={u.id} className="flex items-center justify-between px-4 py-3 gap-4">
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
-                  {u.full_name ?? u.username}
-                  {u.is_admin && (
-                    <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">Admin</span>
-                  )}
-                </p>
-                {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
+            <div key={u.id} className={`flex items-center justify-between px-4 py-3 gap-4 ${!u.is_active ? 'opacity-50' : ''}`}>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium text-foreground truncate">{u.full_name ?? u.username}</p>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.is_admin ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                    {u.is_admin ? 'Admin' : 'Member'}
+                  </span>
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${u.is_active ? 'bg-green-500/15 text-green-600 dark:text-green-400' : 'bg-destructive/15 text-destructive'}`}>
+                    {u.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                {u.email && <p className="text-xs text-muted-foreground truncate mt-0.5">{u.email}</p>}
               </div>
               <div className="flex items-center gap-4 flex-shrink-0">
                 <p className="text-xs text-muted-foreground">Joined {formatDate(u.created_at)}</p>
                 {u.id !== currentUser?.id && (
-                  <button
-                    onClick={() => handleDelete(u.id, u.full_name ?? u.username)}
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    Remove
-                  </button>
+                  u.is_active ? (
+                    <button
+                      onClick={() => handleDeactivate(u.id, u.full_name ?? u.username)}
+                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleReactivate(u.id)}
+                      className="text-xs text-muted-foreground hover:text-green-600 transition-colors"
+                    >
+                      Restore
+                    </button>
+                  )
                 )}
               </div>
             </div>

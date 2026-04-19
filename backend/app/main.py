@@ -120,7 +120,7 @@ def bootstrap(username: str = Form(...), password: str = Form(...), secret: str 
 
 @app.get("/api/admin/users", response_model=List[UserResponse])
 def admin_list_users(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
-    return db.query(models.User).filter(models.User.is_active == True).order_by(models.User.created_at.desc()).all()  # noqa: E712
+    return db.query(models.User).order_by(models.User.created_at.desc()).all()
 
 
 @app.put("/api/admin/users/{user_id}", response_model=UserResponse)
