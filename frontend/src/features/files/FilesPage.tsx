@@ -29,26 +29,28 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/90">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-black flex-shrink-0">
-        <p className="text-sm font-medium text-white truncate">{file.title ?? file.filename}</p>
-        <div className="flex items-center gap-4 ml-4 flex-shrink-0">
-          {url && (
-            <a
-              href={url}
-              download
-              className="text-xs text-white/70 hover:text-white underline"
-            >
-              Download
-            </a>
-          )}
-          <button
-            onClick={onClose}
-            className="flex items-center gap-1.5 rounded-md bg-white/20 hover:bg-white/40 px-3 py-1.5 text-sm font-semibold text-white transition-colors"
+      {/* Floating close button — always on top */}
+      <div className="absolute top-3 right-4 z-[60] flex items-center gap-3">
+        {url && (
+          <a
+            href={url}
+            download
+            className="rounded-md bg-black/80 border border-white/20 px-3 py-2 text-xs font-medium text-white hover:bg-black transition-colors"
           >
-            ✕ Close
-          </button>
-        </div>
+            Download
+          </a>
+        )}
+        <button
+          onClick={onClose}
+          className="rounded-md bg-white px-4 py-2 text-sm font-bold text-black shadow-lg hover:bg-gray-200 transition-colors"
+        >
+          ✕ Close
+        </button>
+      </div>
+
+      {/* Title bar */}
+      <div className="flex items-center px-4 py-3 bg-black flex-shrink-0 pr-40">
+        <p className="text-sm font-medium text-white truncate">{file.title ?? file.filename}</p>
       </div>
 
       {/* Viewer */}
