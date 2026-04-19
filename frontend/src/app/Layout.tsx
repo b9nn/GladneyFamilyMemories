@@ -21,12 +21,12 @@ export function Layout() {
     >
       <Navbar />
       {showBanner && <div className="fixed inset-0 bg-black/40 pointer-events-none z-0" />}
-      <main className="relative z-10 flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8">
+      <main className="relative z-10 flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8 pb-20">
         <ErrorBoundary key={location.pathname}>
           <Outlet />
         </ErrorBoundary>
       </main>
-      <footer className="relative z-10 bg-blue-700 px-4 py-4 sm:px-6 lg:px-8">
+      <footer className="fixed bottom-0 left-0 right-0 z-20 bg-blue-700 px-4 py-4 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl flex items-center justify-between text-xs text-white">
           <span>All Rights Reserved</span>
           <span>Website by Ben and Tom Gladney</span>
