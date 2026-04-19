@@ -120,7 +120,7 @@ def bootstrap(username: str = Form(...), password: str = Form(...), secret: str 
 
 @app.get("/api/admin/users", response_model=List[UserResponse])
 def admin_list_users(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
-    return db.query(models.User).order_by(models.User.created_at.desc()).all()
+    return db.query(models.User).filter(models.User.is_active == True).order_by(models.User.created_at.desc()).all()  # noqa: E712
 
 
 @app.put("/api/admin/users/{user_id}", response_model=UserResponse)
@@ -138,11 +138,11 @@ def admin_update_user(user_id: int, payload: UserAdminUpdate, db: Session = Depe
 @app.delete("/api/admin/users/{user_id}", status_code=204)
 def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
     if current_user.id == user_id:
-        raise HTTPException(400, "Cannot delete your own account")
+        raise HTTPException(400, "Cannot remove your own account")
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
-    db.delete(user)
+    user.is_active = False
     db.commit()
 
 
