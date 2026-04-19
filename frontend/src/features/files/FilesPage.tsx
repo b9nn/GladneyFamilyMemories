@@ -250,19 +250,22 @@ export function FilesPage() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {files.map((file) => (
-            <div key={file.id} className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition-colors text-center">
+            <div
+              key={file.id}
+              className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition-colors text-center cursor-pointer"
+              onClick={() => {
+                if (!file.url) return;
+                if (getViewerType(file.file_type) === 'pdf') {
+                  window.open(file.url, '_blank', 'noopener,noreferrer');
+                } else {
+                  setViewing(file);
+                }
+              }}
+            >
               <p className="text-sm font-medium text-foreground truncate w-full">
                 {file.title ?? file.filename}
               </p>
-              <div className="flex gap-3 mt-auto pt-2">
-                {file.url && (
-                  <button
-                    onClick={() => setViewing(file)}
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Open
-                  </button>
-                )}
+              <div className="flex gap-3 mt-auto pt-2" onClick={(e) => e.stopPropagation()}>
                 {file.url && (
                   <a
                     href={file.url}
