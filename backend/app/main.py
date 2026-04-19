@@ -349,7 +349,7 @@ async def attach_vignette_photo(vid: int, file: UploadFile = F(...), db: Session
     if not v:
         raise HTTPException(404, "Vignette not found")
     contents = await file.read()
-    file_path, _ = upload_file(contents, file.filename or "photo", file.content_type or "image/jpeg", folder="photos")
+    file_path, _ = upload_file(contents, file.filename or "photo", "photos", file.content_type, convert_heic=True)
     photo = models.Photo(filename=file.filename or "photo", file_path=file_path, uploaded_by_id=cu.id)
     db.add(photo)
     db.flush()
