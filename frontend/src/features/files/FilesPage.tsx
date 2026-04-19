@@ -52,11 +52,11 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
       </div>
 
       {/* Viewer */}
-      <div className="flex-1 overflow-hidden flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+      <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
         {kind === 'pdf' && (
           <iframe
-            src={url}
-            className="w-full h-full rounded"
+            src={`${url}#toolbar=1&view=FitH&scrollbar=1`}
+            className="w-full min-h-[80vh] h-full rounded"
             title={file.title ?? file.filename}
           />
         )}
@@ -253,14 +253,7 @@ export function FilesPage() {
             <div
               key={file.id}
               className="flex flex-col items-center gap-2 rounded-lg border border-border bg-card p-4 hover:bg-accent/50 transition-colors text-center cursor-pointer"
-              onClick={() => {
-                if (!file.url) return;
-                if (getViewerType(file.file_type) === 'pdf') {
-                  window.open(file.url, '_blank', 'noopener,noreferrer');
-                } else {
-                  setViewing(file);
-                }
-              }}
+              onClick={() => { if (file.url) setViewing(file); }}
             >
               <p className="text-sm font-medium text-foreground truncate w-full">
                 {file.title ?? file.filename}
