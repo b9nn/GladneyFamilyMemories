@@ -8,12 +8,27 @@ interface AlbumGridProps {
   isAdmin: boolean;
   onSelect: (album: Album) => void;
   onDelete: (id: number) => void;
+  onRename?: (id: number, name: string) => void;
   onDropPhoto?: (albumId: number, photoId: number) => void;
   onReorder?: (orderedIds: number[]) => void;
 }
 
-export function AlbumGrid({ albums, isAdmin, onSelect, onDelete, onDropPhoto, onReorder }: AlbumGridProps) {
+export function AlbumGrid({ albums, isAdmin, onSelect, onDelete, onRename, onDropPhoto, onReorder }: AlbumGridProps) {
   const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const [renamingAlbum, setRenamingAlbum] = useState<Album | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  function openRename(e: React.MouseEvent, album: Album) {
+    e.stopPropagation();
+    setRenamingAlbum(album);
+    setRenameValue(album.name);
+  }
+
+  function saveRename() {
+    if (!renamingAlbum || !renameValue.trim()) return;
+    onRename?.(renamingAlbum.id, renameValue.trim());
+    setRenamingAlbum(null);
+  }
 
   function handleDragEnd(result: DropResult) {
     if (!result.destination || result.destination.index === result.source.index) return;
@@ -65,12 +80,22 @@ export function AlbumGrid({ albums, isAdmin, onSelect, onDelete, onDropPhoto, on
             )}
             <p className="flex-1 text-base font-semibold text-foreground truncate">{album.name}</p>
             {isAdmin && (
-              <button
-                onClick={(e) => { e.stopPropagation(); onDelete(album.id); }}
-                className="flex-shrink-0 text-xs text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                Delete
-              </button>
+              <div className="flex gap-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                {onRename && (
+                  <button
+                    onClick={(e) => openRename(e, album)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Rename
+                  </button>
+                )}
+                <button
+                  onClick={(e) => { e.stopPropagation(); onDelete(album.id); }}
+                  className="text-xs text-muted-foreground hover:text-destructive"
+                >
+                  Delete
+                </button>
+              </div>
             )}
           </div>
           {/* Cover image */}
@@ -88,6 +113,26 @@ export function AlbumGrid({ albums, isAdmin, onSelect, onDelete, onDropPhoto, on
   ));
 
   return (
+    <>
+    {renamingAlbum && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setRenamingAlbum(null)}>
+        <div className="w-full max-w-sm rounded-lg border border-border bg-card p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
+          <h2 className="text-base font-semibold text-foreground">Rename album</h2>
+          <input
+            type="text"
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') saveRename(); if (e.key === 'Escape') setRenamingAlbum(null); }}
+            autoFocus
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          <div className="flex gap-3">
+            <button onClick={saveRename} className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90">Save</button>
+            <button onClick={() => setRenamingAlbum(null)} className="rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-accent">Cancel</button>
+          </div>
+        </div>
+      </div>
+    )}
     <DragDropContext onDragEnd={handleDragEnd}>
       <Droppable droppableId="albums" direction="horizontal">
         {(provided) => (
@@ -102,5 +147,6 @@ export function AlbumGrid({ albums, isAdmin, onSelect, onDelete, onDropPhoto, on
         )}
       </Droppable>
     </DragDropContext>
+    </>
   );
 }

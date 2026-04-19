@@ -6,7 +6,7 @@ import { PhotoUpload } from './components/PhotoUpload';
 import { AlbumGrid } from './components/AlbumGrid';
 import { AlbumView } from './components/AlbumView';
 import { usePhotos, useDeletePhoto, useUpdatePhoto } from './hooks/usePhotos';
-import { useAlbums, useCreateAlbum, useDeleteAlbum, useAddPhotoToAlbum, useReorderAlbums } from './hooks/useAlbums';
+import { useAlbums, useCreateAlbum, useDeleteAlbum, useUpdateAlbum, useAddPhotoToAlbum, useReorderAlbums } from './hooks/useAlbums';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { Album, Photo } from '@/types/api';
 
@@ -19,6 +19,7 @@ export function PhotosPage() {
   const deleteAlbum = useDeleteAlbum();
   const addPhotoToAlbum = useAddPhotoToAlbum();
   const reorderAlbums = useReorderAlbums();
+  const updateAlbum = useUpdateAlbum();
   const isAdmin = useIsAdmin();
 
   const [showUpload, setShowUpload] = useState(false);
@@ -175,6 +176,7 @@ export function PhotosPage() {
                 isAdmin={isAdmin}
                 onSelect={setSelectedAlbum}
                 onDelete={handleDeleteAlbum}
+                onRename={(id, name) => updateAlbum.mutate({ id, data: { name } })}
                 onDropPhoto={(albumId, photoId) => addPhotoToAlbum.mutate({ albumId, photoId })}
                 onReorder={(orderedIds) => reorderAlbums.mutate(orderedIds.map((id, i) => ({ id, sort_order: i })))}
               />
