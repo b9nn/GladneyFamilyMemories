@@ -258,11 +258,11 @@ export function FilesPage() {
               onClick={() => { if (file.url) setViewing(file); }}
             >
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-foreground truncate">
+                <p className="text-sm font-semibold text-yellow-400 truncate">
                   {file.title ?? file.filename}
                 </p>
                 {file.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{file.description}</p>
+                  <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{file.description}</p>
                 )}
               </div>
               <div className="flex gap-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
