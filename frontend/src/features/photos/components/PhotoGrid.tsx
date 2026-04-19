@@ -304,7 +304,7 @@ export function PhotoGrid({ photos, isAdmin = false, albums, onDelete, onSelect,
             <div
               ref={droppable.innerRef}
               {...droppable.droppableProps}
-              className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8"
+              className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
             >
               {photos.map((photo, index) => (
                 <Draggable key={photo.id} draggableId={String(photo.id)} index={index}>
@@ -347,7 +347,7 @@ export function PhotoGrid({ photos, isAdmin = false, albums, onDelete, onSelect,
   }
 
   return (
-    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8">
+    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
       {photos.map((photo) => (
         <PhotoCard
           key={photo.id}
