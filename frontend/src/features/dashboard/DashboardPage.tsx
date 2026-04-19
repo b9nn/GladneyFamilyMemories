@@ -6,6 +6,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
 import type { InviteCode } from '@/types/api';
+import { useAdminUsers } from '@/features/admin/hooks/useAdmin';
+import { formatDate } from '@/lib/utils/date';
 import { useUploadBackground } from '@/features/admin/hooks/useAdmin';
 
 interface StatCardProps {
@@ -162,6 +164,40 @@ function InviteSection() {
   );
 }
 
+function UserListSection() {
+  const { data: users, isLoading } = useAdminUsers();
+
+  return (
+    <div className="mt-10 rounded-lg border border-border bg-card p-6">
+      <h2 className="text-base font-semibold text-foreground mb-4">Current Members</h2>
+      {isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-10 rounded-md bg-muted animate-pulse" />
+          ))}
+        </div>
+      ) : (
+        <div className="divide-y divide-border rounded-md border border-border">
+          {users?.map((u) => (
+            <div key={u.id} className="flex items-center justify-between px-4 py-3 gap-4">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {u.full_name ?? u.username}
+                  {u.is_admin && (
+                    <span className="ml-2 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">Admin</span>
+                  )}
+                </p>
+                {u.email && <p className="text-xs text-muted-foreground truncate">{u.email}</p>}
+              </div>
+              <p className="text-xs text-muted-foreground flex-shrink-0">Joined {formatDate(u.created_at)}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const { user } = useAuthStore();
   const { data: stats, isError: statsError } = useDashboardStats();
@@ -195,6 +231,7 @@ export function DashboardPage() {
         </div>
       )}
 
+      {isAdmin && <UserListSection />}
       {isAdmin && <BackgroundSection />}
       {isAdmin && <InviteSection />}
     </div>
