@@ -26,6 +26,12 @@ export function Layout() {
           <Outlet />
         </ErrorBoundary>
       </main>
+      <footer className="relative z-10 mt-12 border-t border-border px-4 py-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl flex items-center justify-between text-xs text-muted-foreground">
+          <span>All Rights Reserved</span>
+          <span>Website by Ben and Tom Gladney</span>
+        </div>
+      </footer>
       <Toaster />
     </div>
   );
