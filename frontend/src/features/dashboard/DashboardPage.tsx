@@ -164,7 +164,7 @@ function InviteSection() {
 
 export function DashboardPage() {
   const { user } = useAuthStore();
-  const { data: stats } = useDashboardStats();
+  const { data: stats, isError: statsError } = useDashboardStats();
   const isAdmin = user?.is_admin ?? false;
 
   const greeting = user?.full_name ?? user?.username ?? 'there';
@@ -185,6 +185,8 @@ export function DashboardPage() {
           <StatCard label="Files" value={stats.files} to="/files" />
           <StatCard label="Family Members" value={stats.family_members} to="/family-tree" />
         </div>
+      ) : statsError ? (
+        <p className="text-sm text-muted-foreground">Could not load stats — refresh to try again.</p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {Array.from({ length: 5 }).map((_, i) => (

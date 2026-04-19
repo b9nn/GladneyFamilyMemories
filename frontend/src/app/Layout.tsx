@@ -22,7 +22,7 @@ export function Layout() {
       <Navbar />
       {showBanner && <div className="fixed inset-0 bg-black/40 pointer-events-none z-0" />}
       <main className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <ErrorBoundary>
+        <ErrorBoundary key={location.key}>
           <Outlet />
         </ErrorBoundary>
       </main>
