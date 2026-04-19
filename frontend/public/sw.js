@@ -1,5 +1,5 @@
 // Minimal service worker — network-first for API, cache-first for assets
-const CACHE = 'gladney-v1';
+const CACHE = 'gladney-v2';
 const API_PREFIX = '/api/';
 
 self.addEventListener('install', () => self.skipWaiting());
