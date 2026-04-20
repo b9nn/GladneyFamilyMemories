@@ -53,6 +53,13 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
 
       {/* Viewer */}
       <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
+        {kind === 'office' && (
+          <iframe
+            src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
+            className="w-full h-full rounded min-h-[80vh]"
+            title={file.title ?? file.filename}
+          />
+        )}
         {kind === 'image' && (
           <img
             src={url}
@@ -249,7 +256,7 @@ export function FilesPage() {
               onClick={() => {
                 if (!file.url) return;
                 const kind = getViewerType(file.file_type);
-                if (kind === 'image' || kind === 'video' || kind === 'audio') {
+                if (kind === 'image' || kind === 'video' || kind === 'audio' || kind === 'office') {
                   setViewing(file);
                 } else {
                   window.open(file.url, '_blank', 'noopener,noreferrer');
