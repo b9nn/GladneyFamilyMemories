@@ -269,11 +269,16 @@ function SmtpForm({ current, save, test }: SmtpFormProps) {
     from_email: current?.from_email ?? '',
     from_name: current?.from_name ?? 'LandTG Memories',
     admin_email: current?.admin_email ?? '',
-    site_url: current?.site_url ?? '',
+    site_url: current?.site_url ?? 'https://mrtag.com',
   });
+  const [showHelp, setShowHelp] = useState(false);
 
   function set(field: string, value: string | number) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  function applyGmailPreset() {
+    setForm((f) => ({ ...f, smtp_host: 'smtp.gmail.com', smtp_port: 587 }));
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -285,6 +290,47 @@ function SmtpForm({ current, save, test }: SmtpFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card p-6 space-y-4">
+      <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-border">
+        <button
+          type="button"
+          onClick={() => test.mutate()}
+          disabled={test.isPending || !current?.configured}
+          title={!current?.configured ? 'Save your SMTP settings first' : undefined}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+        >
+          {test.isPending ? 'Sending…' : 'Send a test email'}
+        </button>
+        <button
+          type="button"
+          onClick={applyGmailPreset}
+          className="rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
+        >
+          Use Gmail (recommended)
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowHelp((v) => !v)}
+          aria-expanded={showHelp}
+          aria-controls="smtp-gmail-help"
+          className="text-xs text-primary hover:underline ml-auto"
+        >
+          {showHelp ? 'Hide help' : 'How to get a Gmail app password →'}
+        </button>
+      </div>
+
+      {showHelp && (
+        <div id="smtp-gmail-help" role="region" aria-label="Gmail setup instructions" className="rounded-md bg-muted/50 border border-border p-4 text-xs text-foreground space-y-2">
+          <p className="font-medium">Setting up Gmail SMTP (5 minutes):</p>
+          <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+            <li>Visit <a href="https://myaccount.google.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">myaccount.google.com</a> → Security.</li>
+            <li>Enable <strong>2-Step Verification</strong> if not already on (required for app passwords).</li>
+            <li>Open <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-primary hover:underline">App passwords</a>, choose "Mail" / "Other (Custom name)", type "Family Tree", click Generate.</li>
+            <li>Copy the 16-character password Google shows (no spaces).</li>
+            <li>Paste it into <strong>SMTP Password</strong> below; set <strong>SMTP Username</strong> + <strong>From Email</strong> to your Gmail address.</li>
+          </ol>
+        </div>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-xs font-medium text-muted-foreground">SMTP Host</label>
@@ -328,14 +374,6 @@ function SmtpForm({ current, save, test }: SmtpFormProps) {
           className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
         >
           {save.isPending ? 'Saving…' : 'Save settings'}
-        </button>
-        <button
-          type="button"
-          onClick={() => test.mutate()}
-          disabled={test.isPending || !current?.configured}
-          className="rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-accent disabled:opacity-50"
-        >
-          {test.isPending ? 'Sending…' : 'Send test email'}
         </button>
       </div>
     </form>
