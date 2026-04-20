@@ -248,10 +248,11 @@ export function FilesPage() {
               className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-5 py-4 hover:bg-accent/50 transition-colors cursor-pointer"
               onClick={() => {
                 if (!file.url) return;
-                if (getViewerType(file.file_type) === 'pdf') {
-                  window.open(file.url, '_blank', 'noopener,noreferrer');
-                } else {
+                const kind = getViewerType(file.file_type);
+                if (kind === 'image' || kind === 'video' || kind === 'audio') {
                   setViewing(file);
+                } else {
+                  window.open(file.url, '_blank', 'noopener,noreferrer');
                 }
               }}
             >
