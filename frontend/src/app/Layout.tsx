@@ -3,6 +3,7 @@ import { Navbar } from '@/components/shared/Navbar';
 import { Toaster } from '@/components/shared/Toaster';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useDashboardBackground } from '@/features/dashboard/hooks/useDashboard';
+import { CommandPalette } from '@/features/search/CommandPalette';
 
 export function Layout() {
   const location = useLocation();
@@ -33,6 +34,7 @@ export function Layout() {
         </div>
       </footer>
       <Toaster />
+      <CommandPalette />
     </div>
   );
 }
