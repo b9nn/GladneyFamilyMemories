@@ -47,6 +47,7 @@ export function ResetPasswordPage() {
             <input
               id="password"
               type="password"
+              autoComplete="new-password"
               required
               minLength={8}
               value={password}
@@ -59,6 +60,7 @@ export function ResetPasswordPage() {
             <input
               id="confirm"
               type="password"
+              autoComplete="new-password"
               required
               minLength={8}
               value={confirm}

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import axios from 'axios';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
+import { apiErrorMessage } from '@/lib/utils/api';
 import type { UserAdminUpdate, InviteCodeCreate, SmtpConfig } from '@/types/api';
 
 export function useAdminUsers() {
@@ -43,14 +43,6 @@ export function useDeleteInviteCode() {
     mutationFn: (id: number) => adminApi.deleteInviteCode(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'invite-codes'] }); toast('Invite code deleted', 'success'); },
   });
-}
-
-function apiErrorMessage(err: unknown, fallback: string): string {
-  if (axios.isAxiosError(err)) {
-    const detail = err.response?.data?.detail;
-    if (typeof detail === 'string') return detail;
-  }
-  return fallback;
 }
 
 export function useSendInvite() {
