@@ -6,6 +6,7 @@ interface MemberFormProps {
   onSave: (data: {
     first_name: string;
     last_name: string;
+    gender: string;
     birth_date: string;
     death_date: string;
     bio: string;
@@ -17,6 +18,7 @@ export function MemberForm({ initial, onSave, onCancel }: MemberFormProps) {
   const [form, setForm] = useState({
     first_name: initial?.first_name ?? '',
     last_name: initial?.last_name ?? '',
+    gender: initial?.gender ?? '',
     birth_date: initial?.birth_date ?? '',
     death_date: initial?.death_date ?? '',
     bio: initial?.bio ?? '',
@@ -24,7 +26,7 @@ export function MemberForm({ initial, onSave, onCancel }: MemberFormProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   }
 
@@ -57,6 +59,20 @@ export function MemberForm({ initial, onSave, onCancel }: MemberFormProps) {
           <label htmlFor="last_name" className="text-sm font-medium text-foreground">Last name</label>
           <input id="last_name" name="last_name" type="text" value={form.last_name} onChange={handleChange}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring" />
+        </div>
+        <div className="space-y-1">
+          <label htmlFor="gender" className="text-sm font-medium text-foreground">Gender</label>
+          <select
+            id="gender"
+            name="gender"
+            value={form.gender}
+            onChange={handleChange}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            <option value="">Unspecified</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
         </div>
         <div className="space-y-1">
           <label htmlFor="birth_date" className="text-sm font-medium text-foreground">Birth date</label>

@@ -12,6 +12,7 @@ import {
   useDeleteMember,
   useCreateRelationship,
   useDeleteRelationship,
+  useResetLayout,
 } from './hooks/useFamilyTree';
 import type { FamilyMember } from '@/types/api';
 
@@ -23,6 +24,7 @@ export function FamilyTreePage() {
   const deleteMember = useDeleteMember();
   const createRelationship = useCreateRelationship();
   const deleteRelationship = useDeleteRelationship();
+  const resetLayout = useResetLayout();
 
   const isAdmin = useIsAdmin();
   const [showAddForm, setShowAddForm] = useState(false);
@@ -33,10 +35,11 @@ export function FamilyTreePage() {
 
   const isLoading = loadingMembers || loadingRels;
 
-  async function handleCreate(data: { first_name: string; last_name: string; birth_date: string; death_date: string; bio: string }) {
+  async function handleCreate(data: { first_name: string; last_name: string; gender: string; birth_date: string; death_date: string; bio: string }) {
     await createMember.mutateAsync({
       first_name: data.first_name,
       last_name: data.last_name || undefined,
+      gender: (data.gender as 'male' | 'female') || undefined,
       birth_date: data.birth_date || undefined,
       death_date: data.death_date || undefined,
       bio: data.bio || undefined,
@@ -44,13 +47,14 @@ export function FamilyTreePage() {
     setShowAddForm(false);
   }
 
-  async function handleUpdate(data: { first_name: string; last_name: string; birth_date: string; death_date: string; bio: string }) {
+  async function handleUpdate(data: { first_name: string; last_name: string; gender: string; birth_date: string; death_date: string; bio: string }) {
     if (!editingMember) return;
     await updateMember.mutateAsync({
       id: editingMember.id,
       data: {
         first_name: data.first_name,
         last_name: data.last_name || undefined,
+        gender: (data.gender as 'male' | 'female') || undefined,
         birth_date: data.birth_date || undefined,
         death_date: data.death_date || undefined,
         bio: data.bio || undefined,
@@ -110,12 +114,27 @@ export function FamilyTreePage() {
         title="Family Tree"
         description="Explore family connections"
         action={isAdmin ? (
-          <button
-            onClick={() => setShowAddForm(true)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-          >
-            Add member
-          </button>
+          <div className="flex items-center gap-2">
+            {members.length > 0 && (
+              <button
+                onClick={() => {
+                  if (confirm('Reset all members to auto-layout? This clears any manual positions.')) {
+                    resetLayout.mutate(members);
+                  }
+                }}
+                className="rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent disabled:opacity-50"
+                disabled={resetLayout.isPending}
+              >
+                {resetLayout.isPending ? 'Resetting…' : 'Reset to auto-layout'}
+              </button>
+            )}
+            <button
+              onClick={() => setShowAddForm(true)}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+            >
+              Add member
+            </button>
+          </div>
         ) : undefined}
       />
 

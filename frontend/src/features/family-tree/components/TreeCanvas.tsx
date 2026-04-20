@@ -13,9 +13,10 @@ import {
   Position,
   MarkerType,
 } from '@xyflow/react';
-import dagre from 'dagre';
+import calcTree from 'relatives-tree';
 import '@xyflow/react/dist/style.css';
 import type { FamilyMember, FamilyRelationship } from '@/types/api';
+import { buildTreeData, pickRootId } from '../lib/buildTreeData';
 
 interface MemberNodeData {
   label: string;
@@ -56,43 +57,55 @@ const EDGE_CONFIG: Record<string, { color: string; label: string; dashed?: boole
   sibling:      { color: '#059669', label: 'sibling', dashed: true },
 };
 
-function layoutGraph(members: FamilyMember[], relationships: FamilyRelationship[]) {
-  const g = new dagre.graphlib.Graph();
-  g.setDefaultEdgeLabel(() => ({}));
-  g.setGraph({ rankdir: 'TB', ranksep: 100, nodesep: 80 });
+const SCALE_X = 220;
+const SCALE_Y = 150;
 
-  members.forEach((m) => g.setNode(String(m.id), { width: 160, height: 80 }));
-
-  // Use parent_child edges to drive the vertical hierarchy
-  relationships
-    .filter((r) => r.relationship_type === 'parent_child')
-    .forEach((r) => g.setEdge(String(r.person_a_id), String(r.person_b_id)));
-
-  dagre.layout(g);
-
-  return members.map((m) => {
-    const pos = g.node(String(m.id));
-    return {
-      id: String(m.id),
-      x: pos ? pos.x - 80 : m.position_x,
-      y: pos ? pos.y - 40 : m.position_y,
-    };
-  });
+function computePositions(
+  members: FamilyMember[],
+  relationships: FamilyRelationship[],
+): Map<string, { x: number; y: number }> {
+  if (members.length === 0) return new Map();
+  const nodes = buildTreeData(members, relationships);
+  const rootId = pickRootId(nodes, members);
+  try {
+    const result = calcTree(nodes, { rootId, placeholders: false });
+    const positions = new Map<string, { x: number; y: number }>();
+    for (const n of result.nodes) {
+      positions.set(n.id, { x: n.left * SCALE_X, y: n.top * SCALE_Y });
+    }
+    return positions;
+  } catch {
+    // Fallback: place nodes in a simple grid if calcTree fails (e.g. disconnected graph)
+    const positions = new Map<string, { x: number; y: number }>();
+    members.forEach((m, i) => {
+      positions.set(String(m.id), { x: (i % 5) * SCALE_X, y: Math.floor(i / 5) * SCALE_Y });
+    });
+    return positions;
+  }
 }
 
-function buildNodes(members: FamilyMember[], relationships: FamilyRelationship[], onSelectMember: (m: FamilyMember) => void): Node[] {
-  const positions = layoutGraph(members, relationships);
-  return members.map((m, i) => ({
-    id: String(m.id),
-    type: 'member',
-    position: { x: positions[i].x, y: positions[i].y },
-    data: {
-      label: [m.first_name, m.last_name].filter(Boolean).join(' '),
-      birth_date: m.birth_date,
-      death_date: m.death_date,
-      onClick: () => onSelectMember(m),
-    },
-  }));
+function buildNodes(
+  members: FamilyMember[],
+  relationships: FamilyRelationship[],
+  onSelectMember: (m: FamilyMember) => void,
+): Node[] {
+  const positions = computePositions(members, relationships);
+  return members.map((m) => {
+    const auto = positions.get(String(m.id));
+    const useOverride = m.position_x !== 0 || m.position_y !== 0;
+    const pos = useOverride ? { x: m.position_x, y: m.position_y } : auto ?? { x: 0, y: 0 };
+    return {
+      id: String(m.id),
+      type: 'member',
+      position: pos,
+      data: {
+        label: [m.first_name, m.last_name].filter(Boolean).join(' '),
+        birth_date: m.birth_date,
+        death_date: m.death_date,
+        onClick: () => onSelectMember(m),
+      },
+    };
+  });
 }
 
 function buildEdges(relationships: FamilyRelationship[]): Edge[] {

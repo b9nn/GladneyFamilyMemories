@@ -26,8 +26,8 @@ export interface AudioRecording { id: number; filename: string; file_path: strin
 
 export interface FileRecord { id: number; filename: string; file_path: string; url: string | null; title: string | null; description: string | null; file_type: string | null; source: string; uploaded_by_id: number; created_at: string }
 
-export interface FamilyMember { id: number; first_name: string; last_name: string | null; birth_date: string | null; death_date: string | null; bio: string | null; photo_id: number | null; position_x: number; position_y: number; created_by_id: number; created_at: string }
-export interface FamilyMemberCreate { first_name: string; last_name?: string; birth_date?: string; death_date?: string; bio?: string; position_x?: number; position_y?: number }
+export interface FamilyMember { id: number; first_name: string; last_name: string | null; birth_date: string | null; death_date: string | null; bio: string | null; gender: 'male' | 'female' | null; photo_id: number | null; position_x: number; position_y: number; created_by_id: number; created_at: string }
+export interface FamilyMemberCreate { first_name: string; last_name?: string; birth_date?: string; death_date?: string; bio?: string; gender?: 'male' | 'female'; position_x?: number; position_y?: number }
 
 export interface FamilyRelationship { id: number; person_a_id: number; person_b_id: number; relationship_type: 'parent_child' | 'spouse' | 'sibling'; created_at: string }
 export interface FamilyRelationshipCreate { person_a_id: number; person_b_id: number; relationship_type: 'parent_child' | 'spouse' | 'sibling' }

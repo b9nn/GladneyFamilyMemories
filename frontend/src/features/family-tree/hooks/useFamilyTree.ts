@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { familyTreeApi } from '@/lib/api/family-tree';
-import type { FamilyMemberCreate, FamilyRelationshipCreate } from '@/types/api';
+import type { FamilyMember, FamilyMemberCreate, FamilyRelationshipCreate } from '@/types/api';
 
 const MEMBERS_KEY = ['family-tree', 'members'];
 const RELS_KEY = ['family-tree', 'relationships'];
@@ -54,5 +54,19 @@ export function useDeleteRelationship() {
   return useMutation({
     mutationFn: (id: number) => familyTreeApi.deleteRelationship(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: RELS_KEY }),
+  });
+}
+
+export function useResetLayout() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (members: FamilyMember[]) => {
+      await Promise.all(
+        members.map((m) =>
+          familyTreeApi.updateMember(m.id, { position_x: 0, position_y: 0 }),
+        ),
+      );
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: MEMBERS_KEY }),
   });
 }
