@@ -836,6 +836,11 @@ def search(q: str = Query(..., min_length=1), db: Session = Depends(get_db), _: 
         results.append(SearchResult(content_type="audio", id=a.id, title=a.title or a.filename, created_at=a.created_at))
     for f in db.query(models.File).filter(models.File.source == "files").filter(models.File.title.ilike(like) | models.File.description.ilike(like) | models.File.extracted_text.ilike(like)).limit(10).all():
         results.append(SearchResult(content_type="file", id=f.id, title=f.title or f.filename, created_at=f.created_at))
+    for fm in db.query(models.FamilyMember).filter(
+        models.FamilyMember.first_name.ilike(like) | models.FamilyMember.last_name.ilike(like) | models.FamilyMember.bio.ilike(like)
+    ).limit(10).all():
+        title = " ".join(filter(None, [fm.first_name, fm.last_name]))
+        results.append(SearchResult(content_type="family_member", id=fm.id, title=title, created_at=fm.created_at))
     results.sort(key=lambda x: x.created_at, reverse=True)
     return results
 
