@@ -17,7 +17,7 @@ from .database import get_db, init_db
 from . import models
 from .schemas import *
 from .auth import hash_password, verify_password, create_access_token, get_current_user, get_current_admin_user
-from .storage import upload_file, get_file_url, delete_file
+from .storage import upload_file, get_file_url, delete_file, get_variant_url
 from . import email as email_mod
 
 app = FastAPI(title="Gladney Family Tree API", version="1.0.0")
@@ -421,6 +421,8 @@ def list_photos(db: Session = Depends(get_db), _: models.User = Depends(get_curr
     for p in photos:
         d = PhotoResponse.model_validate(p)
         d.url = get_file_url(p.file_path)
+        d.thumb_url = get_variant_url(p.file_path, "thumb")
+        d.medium_url = get_variant_url(p.file_path, "med")
         result.append(d)
     return result
 
@@ -441,6 +443,8 @@ async def upload_photo(
     db.refresh(photo)
     result = PhotoResponse.model_validate(photo)
     result.url = url
+    result.thumb_url = get_variant_url(key, "thumb")
+    result.medium_url = get_variant_url(key, "med")
     return result
 
 
@@ -455,6 +459,8 @@ def update_photo(pid: int, payload: PhotoUpdate, db: Session = Depends(get_db), 
     db.refresh(p)
     result = PhotoResponse.model_validate(p)
     result.url = get_file_url(p.file_path)
+    result.thumb_url = get_variant_url(p.file_path, "thumb")
+    result.medium_url = get_variant_url(p.file_path, "med")
     return result
 
 
@@ -538,6 +544,8 @@ def album_photos(aid: int, db: Session = Depends(get_db), _: models.User = Depen
     for ap in sorted_aps:
         d = PhotoResponse.model_validate(ap.photo)
         d.url = get_file_url(ap.photo.file_path)
+        d.thumb_url = get_variant_url(ap.photo.file_path, "thumb")
+        d.medium_url = get_variant_url(ap.photo.file_path, "med")
         result.append(d)
     return result
 

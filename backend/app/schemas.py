@@ -104,6 +104,8 @@ class PhotoResponse(BaseModel):
     filename: str
     file_path: str
     url: Optional[str] = None
+    thumb_url: Optional[str] = None
+    medium_url: Optional[str] = None
     title: Optional[str] = None
     description: Optional[str] = None
     uploaded_by_id: int
