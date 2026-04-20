@@ -1,24 +1,22 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { authApi } from '@/lib/api/auth';
-import { apiErrorMessage } from '@/lib/utils/api';
 
 export function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
     setLoading(true);
     try {
       await authApi.forgotPassword({ email });
-      setSubmitted(true);
     } catch (err: unknown) {
-      setError(apiErrorMessage(err, 'Request failed'));
+      // Swallow errors — we always show the same message to prevent email enumeration.
+      console.warn('forgot-password request failed:', err);
     } finally {
+      setSubmitted(true);
       setLoading(false);
     }
   }
@@ -41,11 +39,6 @@ export function ForgotPasswordPage() {
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
-                {error}
-              </div>
-            )}
             <div className="space-y-1">
               <label htmlFor="email" className="text-sm font-medium text-foreground">Email</label>
               <input
