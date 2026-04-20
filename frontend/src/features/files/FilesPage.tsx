@@ -53,13 +53,6 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
 
       {/* Viewer */}
       <div className="flex-1 overflow-auto flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-        {kind === 'pdf' && (
-          <iframe
-            src={`${url}#toolbar=1&view=FitH&scrollbar=1`}
-            className="w-full min-h-[80vh] h-full rounded"
-            title={file.title ?? file.filename}
-          />
-        )}
         {kind === 'image' && (
           <img
             src={url}
@@ -253,7 +246,14 @@ export function FilesPage() {
             <div
               key={file.id}
               className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-5 py-4 hover:bg-accent/50 transition-colors cursor-pointer"
-              onClick={() => { if (file.url) setViewing(file); }}
+              onClick={() => {
+                if (!file.url) return;
+                if (getViewerType(file.file_type) === 'pdf') {
+                  window.open(file.url, '_blank', 'noopener,noreferrer');
+                } else {
+                  setViewing(file);
+                }
+              }}
             >
               <div className="min-w-0 flex-1">
                 <p className="text-base font-semibold text-yellow-400 truncate">
