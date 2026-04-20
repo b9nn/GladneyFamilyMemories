@@ -177,9 +177,13 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
       >
         {/* Image */}
         <div className="relative aspect-square overflow-hidden bg-muted">
-          {photo.url ? (
+          {(photo.thumb_url || photo.url) ? (
             <img
-              src={photo.url}
+              src={photo.thumb_url || photo.url || ''}
+              onError={(e) => {
+                const img = e.currentTarget;
+                if (photo.url && img.src !== photo.url) img.src = photo.url;
+              }}
               alt={photo.title ?? photo.filename}
               className="w-full h-full object-cover cursor-pointer transition-transform group-hover:scale-105"
               onClick={() => onSelect?.(photo)}

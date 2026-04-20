@@ -500,8 +500,16 @@ function ContentManagementSection() {
         <div className="rounded-lg border border-border divide-y divide-border">
           {photos.map((p) => (
             <div key={p.id} className="flex items-center gap-3 px-4 py-3">
-              {p.url && (
-                <img src={p.url} alt="" className="w-10 h-10 rounded object-cover flex-shrink-0" />
+              {(p.thumb_url || p.url) && (
+                <img
+                  src={p.thumb_url || p.url || ''}
+                  onError={(e) => {
+                    const img = e.currentTarget;
+                    if (p.url && img.src !== p.url) img.src = p.url;
+                  }}
+                  alt=""
+                  className="w-10 h-10 rounded object-cover flex-shrink-0"
+                />
               )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{p.title ?? p.filename}</p>

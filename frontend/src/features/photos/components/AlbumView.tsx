@@ -75,8 +75,16 @@ export function AlbumView({ album, onBack, onLightbox }: AlbumViewProps) {
                   onClick={() => handleAdd(photo.id)}
                   className="aspect-square rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                 >
-                  {photo.url ? (
-                    <img src={photo.url} alt={photo.title ?? photo.filename} className="w-full h-full object-cover" />
+                  {(photo.thumb_url || photo.url) ? (
+                    <img
+                      src={photo.thumb_url || photo.url || ''}
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        if (photo.url && img.src !== photo.url) img.src = photo.url;
+                      }}
+                      alt={photo.title ?? photo.filename}
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     <div className="w-full h-full bg-muted flex items-center justify-center text-xs text-muted-foreground">?</div>
                   )}

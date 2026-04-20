@@ -329,7 +329,11 @@ function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
       {/* Image */}
       <div className="relative max-w-5xl max-h-[90vh] px-16 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
         <img
-          src={photo.url ?? ''}
+          src={photo.medium_url ?? photo.url ?? ''}
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (photo.url && img.src !== photo.url) img.src = photo.url;
+          }}
           alt={photo.title ?? photo.filename}
           className="max-w-full max-h-[80vh] object-contain rounded-lg"
         />
