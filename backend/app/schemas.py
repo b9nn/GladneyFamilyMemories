@@ -199,6 +199,7 @@ class FamilyMemberCreate(BaseModel):
     birth_date: Optional[str] = None
     death_date: Optional[str] = None
     bio: Optional[str] = None
+    gender: Optional[str] = None
     position_x: float = 0.0
     position_y: float = 0.0
 
@@ -208,6 +209,7 @@ class FamilyMemberUpdate(BaseModel):
     birth_date: Optional[str] = None
     death_date: Optional[str] = None
     bio: Optional[str] = None
+    gender: Optional[str] = None
     position_x: Optional[float] = None
     position_y: Optional[float] = None
 
@@ -218,6 +220,7 @@ class FamilyMemberResponse(BaseModel):
     birth_date: Optional[str] = None
     death_date: Optional[str] = None
     bio: Optional[str] = None
+    gender: Optional[str] = None
     photo_id: Optional[int] = None
     position_x: float
     position_y: float

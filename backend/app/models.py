@@ -177,6 +177,7 @@ class FamilyMember(Base):
     birth_date = Column(String, nullable=True)
     death_date = Column(String, nullable=True)
     bio = Column(Text, nullable=True)
+    gender = Column(String, nullable=True)  # 'male' | 'female' | None
     photo_id = Column(Integer, ForeignKey("photos.id"), nullable=True)
     position_x = Column(Float, default=0.0)
     position_y = Column(Float, default=0.0)
