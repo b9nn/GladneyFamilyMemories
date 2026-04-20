@@ -83,6 +83,26 @@ def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | Non
     return send_email(to_email, "Your invitation to Lorna and Tom's Memories", html, db)
 
 
+def send_password_reset_email(to_email: str, username: str, token: str, db: 'Session | None' = None) -> bool:
+    cfg = get_smtp_config(db)
+    site_url = cfg['site_url'] or 'https://mrtag.com'
+    link = f"{site_url}/reset-password?token={token}"
+    html = f"""
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <h2 style="color:#1a1a1a;">Reset your password</h2>
+      <p>Hi {username},</p>
+      <p>Someone (hopefully you) requested a password reset for your account on the Gladney Family Tree.</p>
+      <p style="margin:24px 0;">
+        <a href="{link}" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Reset Password</a>
+      </p>
+      <p style="color:#666;font-size:13px;">Or copy this link: <a href="{link}">{link}</a></p>
+      <p style="color:#666;font-size:13px;">This link expires in 1 hour. If you didn't request this, you can ignore this email.</p>
+    </div>
+    """
+    ok, _ = send_email(to_email, "Reset your password", html, db)
+    return ok
+
+
 def notify_admin_new_registration(username: str, email: str, db: 'Session | None' = None) -> None:
     cfg = get_smtp_config(db)
     admin_email = cfg['admin_email']

@@ -1,5 +1,6 @@
 import os
 import secrets
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import List, Optional
 
@@ -95,6 +96,33 @@ def change_password(payload: PasswordChange, current_user: models.User = Depends
     if not verify_password(payload.current_password, current_user.hashed_password):
         raise HTTPException(400, "Current password is incorrect")
     current_user.hashed_password = hash_password(payload.new_password)
+    db.commit()
+    return {"message": "Password updated"}
+
+
+@app.post("/api/auth/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    if user and user.is_active:
+        token = secrets.token_urlsafe(32)
+        user.reset_token = token
+        user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        db.commit()
+        email_mod.send_password_reset_email(user.email, user.username, token, db)
+    # Always return the same response — don't leak which emails are registered
+    return {"message": "If that email exists, a reset link has been sent"}
+
+
+@app.post("/api/auth/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    if len(payload.new_password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters")
+    user = db.query(models.User).filter(models.User.reset_token == payload.token).first()
+    if not user or not user.reset_token_expires or user.reset_token_expires < datetime.utcnow():
+        raise HTTPException(400, "Invalid or expired reset link")
+    user.hashed_password = hash_password(payload.new_password)
+    user.reset_token = None
+    user.reset_token_expires = None
     db.commit()
     return {"message": "Password updated"}
 
