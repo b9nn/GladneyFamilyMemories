@@ -37,6 +37,11 @@ export function LoginPage() {
           <h1 className="text-2xl font-bold text-foreground">LandTG Memories</h1>
           <p className="mt-2 text-sm text-muted-foreground">Sign in to your account</p>
         </div>
+        {new URLSearchParams(location.search).get('reset') === 'ok' && (
+          <div className="rounded-md bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 p-3 text-sm text-green-700 dark:text-green-400">
+            Password updated. Sign in with your new password.
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
             <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3 text-sm text-destructive">
@@ -70,6 +75,11 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
+          </div>
+          <div className="text-right">
+            <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+              Forgot password?
+            </Link>
           </div>
           <button
             type="submit"

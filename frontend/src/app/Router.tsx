@@ -5,6 +5,8 @@ import { ProtectedRoute } from '@/components/shared/ProtectedRoute';
 
 const LoginPage = lazy(() => import('@/features/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('@/features/auth/RegisterPage').then(m => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('@/features/auth/ForgotPasswordPage').then(m => ({ default: m.ForgotPasswordPage })));
+const ResetPasswordPage = lazy(() => import('@/features/auth/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })));
 const ChangePasswordPage = lazy(() => import('@/features/auth/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })));
 const DashboardPage = lazy(() => import('@/features/dashboard/DashboardPage').then(m => ({ default: m.DashboardPage })));
 const VignettesPage = lazy(() => import('@/features/vignettes/VignettesPage').then(m => ({ default: m.VignettesPage })));
@@ -34,6 +36,14 @@ const router = createBrowserRouter([
   {
     path: '/register',
     element: <Suspense fallback={null}><RegisterPage /></Suspense>,
+  },
+  {
+    path: '/forgot-password',
+    element: <Suspense fallback={null}><ForgotPasswordPage /></Suspense>,
+  },
+  {
+    path: '/reset-password',
+    element: <Suspense fallback={null}><ResetPasswordPage /></Suspense>,
   },
   {
     path: '/',
