@@ -33,3 +33,11 @@ export function useDeleteFile() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: KEY }); toast('File deleted', 'success'); },
   });
 }
+
+export function useReorderFiles() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (items: { id: number; sort_order: number }[]) => filesApi.reorder(items),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: KEY }); },
+  });
+}

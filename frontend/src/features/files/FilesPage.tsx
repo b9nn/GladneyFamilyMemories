@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react';
+import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { useFiles, useUploadFile, useDeleteFile, useUpdateFile } from './hooks/useFiles';
+import { useFiles, useUploadFile, useDeleteFile, useUpdateFile, useReorderFiles } from './hooks/useFiles';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { FileRecord } from '@/types/api';
 
@@ -110,7 +111,16 @@ export function FilesPage() {
   const uploadFile = useUploadFile();
   const updateFile = useUpdateFile();
   const deleteFile = useDeleteFile();
+  const reorderFiles = useReorderFiles();
   const isAdmin = useIsAdmin();
+
+  function handleDragEnd(result: DropResult) {
+    if (!result.destination || !files) return;
+    const reordered = Array.from(files);
+    const [moved] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, moved);
+    reorderFiles.mutate(reordered.map((f, i) => ({ id: f.id, sort_order: i })));
+  }
   const fileRef = useRef<HTMLInputElement>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [title, setTitle] = useState('');
@@ -248,60 +258,81 @@ export function FilesPage() {
           ) : undefined}
         />
       ) : (
-        <div className="flex flex-col gap-3">
-          {files.map((file) => (
-            <div
-              key={file.id}
-              className="flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-5 py-4 hover:bg-accent/50 transition-colors cursor-pointer"
-              onClick={() => {
-                if (!file.url) return;
-                const kind = getViewerType(file.file_type);
-                if (kind === 'image' || kind === 'video' || kind === 'audio' || kind === 'office') {
-                  setViewing(file);
-                } else {
-                  window.open(file.url, '_blank', 'noopener,noreferrer');
-                }
-              }}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-semibold text-yellow-400 truncate">
-                  {file.title ?? file.filename}
-                </p>
-                {file.description && (
-                  <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{file.description}</p>
-                )}
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <Droppable droppableId="files" isDropDisabled={!isAdmin}>
+            {(provided) => (
+              <div className="flex flex-col gap-3" ref={provided.innerRef} {...provided.droppableProps}>
+                {files.map((file, index) => (
+                  <Draggable key={file.id} draggableId={String(file.id)} index={index} isDragDisabled={!isAdmin}>
+                    {(drag, snapshot) => (
+                      <div
+                        ref={drag.innerRef}
+                        {...drag.draggableProps}
+                        className={`flex items-center justify-between gap-4 rounded-lg border border-border bg-card px-5 py-4 hover:bg-accent/50 transition-colors cursor-pointer ${snapshot.isDragging ? 'opacity-75 ring-2 ring-primary shadow-lg' : ''}`}
+                        onClick={() => {
+                          if (!file.url) return;
+                          const kind = getViewerType(file.file_type);
+                          if (kind === 'image' || kind === 'video' || kind === 'audio' || kind === 'office') {
+                            setViewing(file);
+                          } else {
+                            window.open(file.url, '_blank', 'noopener,noreferrer');
+                          }
+                        }}
+                      >
+                        {isAdmin && (
+                          <div
+                            {...drag.dragHandleProps}
+                            className="flex-shrink-0 text-muted-foreground/40 hover:text-muted-foreground cursor-grab active:cursor-grabbing px-1 select-none"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            ⠿
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="text-base font-semibold text-yellow-400 truncate">
+                            {file.title ?? file.filename}
+                          </p>
+                          {file.description && (
+                            <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{file.description}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          {file.url && (
+                            <a
+                              href={file.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-muted-foreground hover:underline"
+                            >
+                              Download
+                            </a>
+                          )}
+                          {isAdmin && (
+                            <>
+                              <button
+                                onClick={() => openEdit(file)}
+                                className="text-xs text-muted-foreground hover:text-foreground"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDelete(file.id)}
+                                className="text-xs text-muted-foreground hover:text-destructive"
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
               </div>
-              <div className="flex gap-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                {file.url && (
-                  <a
-                    href={file.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-muted-foreground hover:underline"
-                  >
-                    Download
-                  </a>
-                )}
-                {isAdmin && (
-                  <>
-                    <button
-                      onClick={() => openEdit(file)}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(file.id)}
-                      className="text-xs text-muted-foreground hover:text-destructive"
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+            )}
+          </Droppable>
+        </DragDropContext>
 
       )}
 

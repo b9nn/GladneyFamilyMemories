@@ -152,6 +152,7 @@ class File(Base):
     source = Column(String, default="files")  # "vignettes" | "files"
     uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     extracted_text = Column(Text, nullable=True)
+    sort_order = Column(Integer, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     uploaded_by = relationship("User", back_populates="files")

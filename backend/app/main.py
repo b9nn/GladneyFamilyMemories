@@ -661,7 +661,21 @@ def delete_audio(rid: int, db: Session = Depends(get_db), _: models.User = Depen
 
 @app.get("/api/files", response_model=List[FileResponse])
 def list_files(source: str = Query("files"), db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    files = db.query(models.File).filter(models.File.source == source).order_by(models.File.created_at.desc()).all()
+    files = db.query(models.File).filter(models.File.source == source).order_by(models.File.sort_order.asc(), models.File.created_at.desc()).all()
+    result = []
+    for f in files:
+        d = FileResponse.model_validate(f)
+        d.url = get_file_url(f.file_path)
+        result.append(d)
+    return result
+
+
+@app.put("/api/files/reorder", response_model=List[FileResponse])
+def reorder_files(items: List[FileReorderItem], db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    for item in items:
+        db.query(models.File).filter(models.File.id == item.id).update({"sort_order": item.sort_order})
+    db.commit()
+    files = db.query(models.File).filter(models.File.source == "files").order_by(models.File.sort_order.asc(), models.File.created_at.desc()).all()
     result = []
     for f in files:
         d = FileResponse.model_validate(f)

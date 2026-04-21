@@ -177,6 +177,11 @@ class FileUpdate(BaseModel):
     description: Optional[str] = None
 
 
+class FileReorderItem(BaseModel):
+    id: int
+    sort_order: int
+
+
 class FileResponse(BaseModel):
     id: int
     filename: str
@@ -187,6 +192,7 @@ class FileResponse(BaseModel):
     file_type: Optional[str] = None
     source: str
     uploaded_by_id: int
+    sort_order: int = 0
     created_at: datetime
     model_config = {"from_attributes": True}
 

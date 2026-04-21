@@ -24,7 +24,7 @@ export interface AlbumUpdate { name?: string; description?: string; sort_order?:
 
 export interface AudioRecording { id: number; filename: string; file_path: string; url: string | null; title: string | null; description: string | null; author_id: number; duration_seconds: number | null; created_at: string }
 
-export interface FileRecord { id: number; filename: string; file_path: string; url: string | null; title: string | null; description: string | null; file_type: string | null; source: string; uploaded_by_id: number; created_at: string }
+export interface FileRecord { id: number; filename: string; file_path: string; url: string | null; title: string | null; description: string | null; file_type: string | null; source: string; uploaded_by_id: number; sort_order: number; created_at: string }
 
 export interface FamilyMember { id: number; first_name: string; last_name: string | null; birth_date: string | null; death_date: string | null; bio: string | null; gender: 'male' | 'female' | null; photo_id: number | null; position_x: number; position_y: number; created_by_id: number; created_at: string }
 export interface FamilyMemberCreate { first_name: string; last_name?: string; birth_date?: string; death_date?: string; bio?: string; gender?: 'male' | 'female'; position_x?: number; position_y?: number }

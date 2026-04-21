@@ -13,4 +13,6 @@ export const filesApi = {
   update: (id: number, payload: { title?: string; description?: string }) =>
     client.put<FileRecord>(`/api/files/${id}`, payload).then(r => r.data),
   delete: (id: number) => client.delete(`/api/files/${id}`).then(r => r.data),
+  reorder: (items: { id: number; sort_order: number }[]) =>
+    client.put<FileRecord[]>('/api/files/reorder', items).then(r => r.data),
 }
