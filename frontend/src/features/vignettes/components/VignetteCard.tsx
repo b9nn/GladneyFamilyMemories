@@ -64,7 +64,7 @@ function VignetteModal({ vignette, onClose }: { vignette: Vignette; onClose: () 
         <div className="px-8 py-6">
           {html ? (
             <div
-              className="prose prose-sm dark:prose-invert max-w-none text-foreground"
+              className="prose prose-sm dark:prose-invert max-w-none text-foreground [&_p]:mb-3 [&_p:last-child]:mb-0 [&_p:empty]:min-h-[1em]"
               dangerouslySetInnerHTML={{ __html: html }}
             />
           ) : (
@@ -156,7 +156,7 @@ export function VignetteCard({ vignette, isAdmin, onEdit, onDelete, onRename }: 
         </div>
         {html && (
           <div
-            className="prose prose-sm dark:prose-invert max-w-none line-clamp-6 text-muted-foreground"
+            className="prose prose-sm dark:prose-invert max-w-none line-clamp-6 text-muted-foreground [&_p]:mb-3 [&_p:last-child]:mb-0 [&_p:empty]:min-h-[1em]"
             dangerouslySetInnerHTML={{ __html: html }}
           />
         )}
