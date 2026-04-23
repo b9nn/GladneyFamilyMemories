@@ -243,13 +243,15 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
                       Cover
                     </button>
                   )}
-                  {/* Delete */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}
-                    className="rounded bg-black/60 px-2 py-0.5 text-xs text-white hover:bg-red-500 transition-colors"
-                  >
-                    {deleteLabel}
-                  </button>
+                  {/* Delete — only in overlay when there's no details panel; otherwise shown below the image */}
+                  {!showDetails && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}
+                      className="rounded bg-black/60 px-2 py-0.5 text-xs text-white hover:bg-red-500 transition-colors"
+                    >
+                      {deleteLabel}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -273,6 +275,12 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
               />
             </div>
             <p className="text-xs text-muted-foreground">↑ {formatDate(photo.created_at)}</p>
+            <button
+              onClick={() => onDelete(photo.id)}
+              className="w-full rounded text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 px-1 py-0.5 text-left transition-colors"
+            >
+              Delete photo
+            </button>
           </div>
         )}
       </div>
