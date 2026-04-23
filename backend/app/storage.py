@@ -36,8 +36,8 @@ def _convert_heic(file_bytes: bytes) -> bytes:
     try:
         from pillow_heif import register_heif_opener
         register_heif_opener()
-        from PIL import Image
-        img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
+        from PIL import Image, ImageOps
+        img = ImageOps.exif_transpose(Image.open(io.BytesIO(file_bytes))).convert("RGB")
         out = io.BytesIO()
         img.save(out, format="JPEG", quality=90)
         return out.getvalue()
@@ -54,7 +54,9 @@ def _make_variant(file_bytes: bytes, max_width: int, quality: int) -> bytes:
         register_heif_opener()
     except ImportError:
         pass
+    from PIL import ImageOps
     img = Image.open(io.BytesIO(file_bytes))
+    img = ImageOps.exif_transpose(img)
     if img.mode != "RGB":
         img = img.convert("RGB")
     if img.width > max_width:
