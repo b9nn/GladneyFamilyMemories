@@ -12,6 +12,7 @@ interface VignetteCardProps {
   onEdit: (v: Vignette) => void;
   onDelete: (id: number) => void;
   onRename: (id: number, title: string) => void;
+  onDetachPhoto?: (vignetteId: number, vpId: number) => void;
 }
 
 function renderContent(content: string | null): string {
@@ -26,7 +27,7 @@ function renderContent(content: string | null): string {
 
 // ── Reading modal ─────────────────────────────────────────────────────────────
 
-function VignetteModal({ vignette, onClose }: { vignette: Vignette; onClose: () => void }) {
+function VignetteModal({ vignette, isAdmin, onClose, onDetachPhoto }: { vignette: Vignette; isAdmin: boolean; onClose: () => void; onDetachPhoto?: (vignetteId: number, vpId: number) => void }) {
   const html = renderContent(vignette.content);
 
   // Close on Escape
@@ -76,13 +77,23 @@ function VignetteModal({ vignette, onClose }: { vignette: Vignette; onClose: () 
         {vignette.photos?.length > 0 && (
           <div className="px-8 pb-8 flex flex-wrap gap-3">
             {vignette.photos.map((vp) => vp.url && (
-              <img
-                key={vp.id}
-                src={vp.url}
-                alt=""
-                className="h-40 w-auto max-w-full rounded-md object-cover border border-border cursor-pointer hover:opacity-90 transition-opacity"
-                onClick={() => window.open(vp.url!, '_blank')}
-              />
+              <div key={vp.id} className="relative group/photo">
+                <img
+                  src={vp.url}
+                  alt=""
+                  className="h-40 w-auto max-w-full rounded-md object-cover border border-border cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => window.open(vp.url!, '_blank')}
+                />
+                {isAdmin && onDetachPhoto && (
+                  <button
+                    onClick={() => onDetachPhoto(vignette.id, vp.id)}
+                    className="absolute top-1 right-1 hidden group-hover/photo:flex items-center justify-center w-6 h-6 rounded-full bg-black/70 text-white text-xs hover:bg-red-600 transition-colors"
+                    title="Remove photo"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
@@ -93,7 +104,7 @@ function VignetteModal({ vignette, onClose }: { vignette: Vignette; onClose: () 
 
 // ── Card ──────────────────────────────────────────────────────────────────────
 
-export function VignetteCard({ vignette, isAdmin, onEdit, onDelete, onRename }: VignetteCardProps) {
+export function VignetteCard({ vignette, isAdmin, onEdit, onDelete, onRename, onDetachPhoto }: VignetteCardProps) {
   const html = renderContent(vignette.content);
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState(vignette.title);
@@ -176,7 +187,7 @@ export function VignetteCard({ vignette, isAdmin, onEdit, onDelete, onRename }: 
       </div>
 
       {showModal && (
-        <VignetteModal vignette={vignette} onClose={() => setShowModal(false)} />
+        <VignetteModal vignette={vignette} isAdmin={isAdmin} onClose={() => setShowModal(false)} onDetachPhoto={onDetachPhoto} />
       )}
     </>
   );

@@ -56,3 +56,12 @@ export function useDetachVignettePhoto(vignetteId: number) {
     onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 }
+
+export function useDetachVignettePhotoById() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ vignetteId, vpId }: { vignetteId: number; vpId: number }) =>
+      vignettesApi.detachPhoto(vignetteId, vpId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: KEY }),
+  });
+}

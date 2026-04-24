@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { VignetteCard } from './components/VignetteCard';
 import { VignetteForm } from './components/VignetteForm';
-import { useVignettes, useCreateVignette, useUpdateVignette, useDeleteVignette, useReorderVignettes } from './hooks/useVignettes';
+import { useVignettes, useCreateVignette, useUpdateVignette, useDeleteVignette, useReorderVignettes, useDetachVignettePhotoById } from './hooks/useVignettes';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { Vignette } from '@/types/api';
 
@@ -16,6 +16,7 @@ export function VignettesPage() {
   const update = useUpdateVignette();
   const remove = useDeleteVignette();
   const reorder = useReorderVignettes();
+  const detachPhoto = useDetachVignettePhotoById();
   const isAdmin = useIsAdmin();
 
   const [mode, setMode] = useState<Mode>('list');
@@ -91,7 +92,8 @@ export function VignettesPage() {
                         className={snapshot.isDragging ? 'opacity-75 ring-2 ring-primary rounded-lg' : ''}
                       >
                         <VignetteCard vignette={v} isAdmin={isAdmin}
-                          onEdit={handleEdit} onRename={handleRename} onDelete={handleDelete} />
+                          onEdit={handleEdit} onRename={handleRename} onDelete={handleDelete}
+                          onDetachPhoto={(vignetteId, vpId) => detachPhoto.mutate({ vignetteId, vpId })} />
                       </div>
                     )}
                   </Draggable>
