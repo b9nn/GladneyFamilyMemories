@@ -194,12 +194,13 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
             </div>
           )}
           <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors pointer-events-none" />
-          <div className="absolute bottom-0 left-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* Overlay — always visible for admin when no details panel (touch-friendly); hover-only otherwise */}
+          <div className={`absolute bottom-0 left-0 right-0 p-2 transition-opacity ${isAdmin && !showDetails ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
             <div className="flex items-end justify-between gap-1">
               {!showDetails && photo.title && (
                 <p className="text-xs text-white font-medium truncate">{photo.title}</p>
               )}
-              {isAdmin && (
+              {isAdmin && !showDetails && (
                 <div className="ml-auto flex gap-1 relative" ref={pickerRef}>
                   {/* + Album picker */}
                   {onAddToAlbum && albums && albums.length > 0 && (
@@ -243,15 +244,13 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
                       Cover
                     </button>
                   )}
-                  {/* Delete — only in overlay when there's no details panel; otherwise shown below the image */}
-                  {!showDetails && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}
-                      className="rounded bg-black/60 px-2 py-0.5 text-xs text-white hover:bg-red-500 transition-colors"
-                    >
-                      {deleteLabel}
-                    </button>
-                  )}
+                  {/* Delete */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDelete(photo.id); }}
+                    className="rounded bg-black/60 px-2 py-0.5 text-xs text-white hover:bg-red-500 transition-colors"
+                  >
+                    {deleteLabel}
+                  </button>
                 </div>
               )}
             </div>
@@ -275,12 +274,46 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
               />
             </div>
             <p className="text-xs text-muted-foreground">↑ {formatDate(photo.created_at)}</p>
-            <button
-              onClick={() => onDelete(photo.id)}
-              className="w-full rounded text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 px-1 py-0.5 text-left transition-colors"
-            >
-              Delete photo
-            </button>
+            {/* Action row — always visible (touch-friendly) */}
+            <div className="flex flex-wrap gap-1 pt-0.5 relative" ref={pickerRef}>
+              {onAddToAlbum && albums && albums.length > 0 && (
+                <>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowAlbumPicker((v) => !v); }}
+                    className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground hover:bg-accent transition-colors"
+                  >
+                    + Album
+                  </button>
+                  {showAlbumPicker && (
+                    <div className="absolute bottom-full mb-1 left-0 z-20 min-w-[130px] rounded-md border border-border bg-card shadow-lg overflow-hidden">
+                      {albums.map((album) => (
+                        <button
+                          key={album.id}
+                          onClick={(e) => { e.stopPropagation(); onAddToAlbum(photo.id, album.id); setShowAlbumPicker(false); }}
+                          className="w-full text-left px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
+                        >
+                          {album.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+              {onUpdate && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowEditModal(true); }}
+                  className="rounded border border-border px-1.5 py-0.5 text-xs text-foreground hover:bg-accent transition-colors"
+                >
+                  Edit
+                </button>
+              )}
+              <button
+                onClick={() => onDelete(photo.id)}
+                className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
           </div>
         )}
       </div>

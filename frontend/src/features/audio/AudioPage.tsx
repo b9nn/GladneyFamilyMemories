@@ -7,6 +7,7 @@ import { useAudioList, useDeleteAudio, useUpdateAudio } from './hooks/useAudio';
 import { formatDate } from '@/lib/utils/date';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { AudioRecording } from '@/types/api';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Panel = 'none' | 'record' | 'upload';
 
@@ -18,6 +19,7 @@ function formatDuration(seconds: number | null): string {
 }
 
 export function AudioPage() {
+  const qc = useQueryClient();
   const { data: recordings, isLoading } = useAudioList();
   const deleteAudio = useDeleteAudio();
   const updateAudio = useUpdateAudio();
@@ -25,6 +27,7 @@ export function AudioPage() {
   const [panel, setPanel] = useState<Panel>('none');
   const [editing, setEditing] = useState<AudioRecording | null>(null);
   const [editTitle, setEditTitle] = useState('');
+  const [audioErrors, setAudioErrors] = useState<Set<number>>(new Set());
 
   function handleDelete(id: number) {
     if (!confirm('Delete this recording?')) return;
@@ -130,7 +133,30 @@ export function AudioPage() {
                 )}
               </div>
               {rec.url && (
-                <audio src={rec.url} controls className="w-full h-10" />
+                <div className="space-y-1">
+                  <audio
+                    key={rec.url}
+                    src={rec.url}
+                    controls
+                    className="w-full"
+                    onError={() => setAudioErrors((prev) => new Set(prev).add(rec.id))}
+                    onPlay={() => setAudioErrors((prev) => { const s = new Set(prev); s.delete(rec.id); return s; })}
+                  />
+                  {audioErrors.has(rec.id) && (
+                    <div className="flex items-center gap-3 text-xs text-destructive">
+                      <span>Could not load audio.</span>
+                      <button
+                        onClick={() => { setAudioErrors((prev) => { const s = new Set(prev); s.delete(rec.id); return s; }); qc.invalidateQueries({ queryKey: ['audio'] }); }}
+                        className="underline hover:no-underline"
+                      >
+                        Reload
+                      </button>
+                      <a href={rec.url} download className="underline hover:no-underline text-muted-foreground">
+                        Download instead
+                      </a>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           ))}

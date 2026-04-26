@@ -5,7 +5,7 @@ import { toast } from '@/stores/toast-store';
 const KEY = ['audio'];
 
 export function useAudioList() {
-  return useQuery({ queryKey: KEY, queryFn: audioApi.list });
+  return useQuery({ queryKey: KEY, queryFn: audioApi.list, staleTime: 0 });
 }
 
 export function useUploadAudio() {
