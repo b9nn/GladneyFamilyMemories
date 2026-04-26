@@ -1,10 +1,25 @@
 import { useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { EmptyState } from '@/components/shared/EmptyState';
-import { useFiles, useUploadFile, useDeleteFile, useUpdateFile, useReorderFiles } from './hooks/useFiles';
+import { useFiles, useDeleteFile, useUpdateFile, useReorderFiles } from './hooks/useFiles';
+import { filesApi } from '@/lib/api/files';
+import { toast } from '@/stores/toast-store';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { FileRecord } from '@/types/api';
+
+function getFileTypeBadge(type: string | null): string | null {
+  if (!type) return null;
+  if (type.startsWith('video/')) return 'VIDEO';
+  if (type.startsWith('audio/')) return 'AUDIO';
+  if (type.startsWith('image/')) return 'IMAGE';
+  if (type.includes('pdf')) return 'PDF';
+  if (type.includes('word') || type.includes('document')) return 'DOC';
+  if (type.includes('sheet') || type.includes('excel')) return 'SHEET';
+  if (type.includes('presentation') || type.includes('powerpoint')) return 'SLIDES';
+  return null;
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -79,13 +94,6 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
             <audio src={url} controls autoPlay className="w-full" />
           </div>
         )}
-        {kind === 'office' && (
-          <iframe
-            src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
-            className="w-full h-full rounded"
-            title={file.title ?? file.filename}
-          />
-        )}
         {kind === 'none' && (
           <div className="bg-card rounded-lg p-10 text-center space-y-4">
             <p className="text-foreground font-medium">{file.title ?? file.filename}</p>
@@ -107,8 +115,8 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
 }
 
 export function FilesPage() {
+  const queryClient = useQueryClient();
   const { data: files, isLoading } = useFiles();
-  const uploadFile = useUploadFile();
   const updateFile = useUpdateFile();
   const deleteFile = useDeleteFile();
   const reorderFiles = useReorderFiles();
@@ -126,6 +134,7 @@ export function FilesPage() {
   const [title, setTitle] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
   const [viewing, setViewing] = useState<FileRecord | null>(null);
   const [editing, setEditing] = useState<FileRecord | null>(null);
@@ -135,11 +144,15 @@ export function FilesPage() {
   async function handleUpload() {
     if (!selectedFile) return;
     setUploading(true);
+    setUploadProgress(0);
     setError('');
     try {
-      await uploadFile.mutateAsync({ file: selectedFile, title: title || undefined });
+      await filesApi.upload(selectedFile, title || undefined, undefined, 'files', (pct) => setUploadProgress(pct));
+      await queryClient.invalidateQueries({ queryKey: ['files'] });
+      toast('File uploaded', 'success');
       setSelectedFile(null);
       setTitle('');
+      setUploadProgress(0);
       setShowUpload(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Upload failed');
@@ -201,13 +214,16 @@ export function FilesPage() {
           </div>
           <div
             className="rounded-lg border-2 border-dashed border-border p-8 text-center cursor-pointer hover:border-primary transition-colors"
-            onClick={() => fileRef.current?.click()}
+            onClick={() => !uploading && fileRef.current?.click()}
           >
             <p className="text-muted-foreground text-sm">
               {selectedFile ? selectedFile.name : 'Click to select a file'}
             </p>
             {selectedFile && (
               <p className="text-xs text-muted-foreground mt-1">{formatBytes(selectedFile.size)}</p>
+            )}
+            {!selectedFile && (
+              <p className="text-xs text-muted-foreground mt-2">Documents, PDFs, images, video, audio</p>
             )}
             <input
               ref={fileRef}
@@ -216,15 +232,25 @@ export function FilesPage() {
               onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
             />
           </div>
-          {selectedFile && (
+          {uploading && (
+            <div className="space-y-1">
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-200"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground text-right">{uploadProgress}%</p>
+            </div>
+          )}
+          {selectedFile && !uploading && (
             <div className="flex gap-3">
               <button
                 type="button"
                 onClick={handleUpload}
-                disabled={uploading}
-                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
               >
-                {uploading ? 'Uploading…' : 'Upload'}
+                Upload
               </button>
               <button
                 type="button"
@@ -289,9 +315,16 @@ export function FilesPage() {
                           </div>
                         )}
                         <div className="min-w-0 flex-1">
-                          <p className="text-base font-semibold text-yellow-400 truncate">
-                            {file.title ?? file.filename}
-                          </p>
+                          <div className="flex items-center gap-2 min-w-0">
+                            <p className="text-base font-semibold text-yellow-400 truncate">
+                              {file.title ?? file.filename}
+                            </p>
+                            {getFileTypeBadge(file.file_type) && (
+                              <span className="flex-shrink-0 rounded px-1.5 py-0.5 text-xs font-medium bg-muted text-muted-foreground">
+                                {getFileTypeBadge(file.file_type)}
+                              </span>
+                            )}
+                          </div>
                           {file.description && (
                             <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{file.description}</p>
                           )}

@@ -2,13 +2,17 @@ import { client } from './client'
 import type { FileRecord } from '@/types/api'
 export const filesApi = {
   list: (source = 'files') => client.get<FileRecord[]>(`/api/files?source=${source}`).then(r => r.data),
-  upload: (file: File, title?: string, description?: string, source = 'files') => {
+  upload: (file: File, title?: string, description?: string, source = 'files', onUploadProgress?: (pct: number) => void) => {
     const form = new FormData()
     form.append('file', file)
     if (title) form.append('title', title)
     if (description) form.append('description', description)
     form.append('source', source)
-    return client.post<FileRecord>('/api/files', form).then(r => r.data)
+    return client.post<FileRecord>('/api/files', form, {
+      onUploadProgress: onUploadProgress
+        ? (e) => { if (e.total) onUploadProgress(Math.round((e.loaded / e.total) * 100)); }
+        : undefined,
+    }).then(r => r.data)
   },
   update: (id: number, payload: { title?: string; description?: string }) =>
     client.put<FileRecord>(`/api/files/${id}`, payload).then(r => r.data),
