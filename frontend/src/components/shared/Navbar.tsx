@@ -10,7 +10,6 @@ const navLinks = [
   { to: '/photos', label: 'Photos' },
   { to: '/audio', label: 'Audio' },
   { to: '/files', label: 'Files' },
-  { to: '/family-tree', label: 'Family Tree' },
   { to: '/timeline', label: 'Timeline' },
   { to: '/search', label: 'Search' },
 ];

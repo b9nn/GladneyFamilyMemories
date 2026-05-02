@@ -8,7 +8,7 @@ import { CommandPalette } from '@/features/search/CommandPalette';
 export function Layout() {
   const location = useLocation();
   const { data: bg } = useDashboardBackground();
-  const showBanner = bg?.url != null && location.pathname !== '/family-tree';
+  const showBanner = bg?.url != null;
 
   return (
     <div

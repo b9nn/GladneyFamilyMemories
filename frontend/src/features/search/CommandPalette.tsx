@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import { useQuery } from '@tanstack/react-query';
 import { searchApi } from '@/lib/api/search';
-import { FileText, Image, Music, File as FileIcon, User } from 'lucide-react';
+import { FileText, Image, Music, File as FileIcon } from 'lucide-react';
 import type { SearchResult } from '@/types/api';
 
 const ROUTE_FOR_TYPE: Record<string, string> = {
@@ -11,7 +11,6 @@ const ROUTE_FOR_TYPE: Record<string, string> = {
   photo: '/photos',
   audio: '/audio',
   file: '/files',
-  family_member: '/family-tree',
 };
 
 const ICON_FOR_TYPE: Record<string, typeof FileText> = {
@@ -19,7 +18,6 @@ const ICON_FOR_TYPE: Record<string, typeof FileText> = {
   photo: Image,
   audio: Music,
   file: FileIcon,
-  family_member: User,
 };
 
 const TYPE_LABEL: Record<string, string> = {
@@ -27,7 +25,6 @@ const TYPE_LABEL: Record<string, string> = {
   photo: 'Photos',
   audio: 'Audio',
   file: 'Files',
-  family_member: 'Family',
 };
 
 export function CommandPalette() {

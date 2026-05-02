@@ -13,7 +13,6 @@ const VignettesPage = lazy(() => import('@/features/vignettes/VignettesPage').th
 const PhotosPage = lazy(() => import('@/features/photos/PhotosPage').then(m => ({ default: m.PhotosPage })));
 const AudioPage = lazy(() => import('@/features/audio/AudioPage').then(m => ({ default: m.AudioPage })));
 const FilesPage = lazy(() => import('@/features/files/FilesPage').then(m => ({ default: m.FilesPage })));
-const FamilyTreePage = lazy(() => import('@/features/family-tree/FamilyTreePage').then(m => ({ default: m.FamilyTreePage })));
 const TimelinePage = lazy(() => import('@/features/timeline/TimelinePage').then(m => ({ default: m.TimelinePage })));
 const SearchPage = lazy(() => import('@/features/search/SearchPage').then(m => ({ default: m.SearchPage })));
 const AdminPage = lazy(() => import('@/features/admin/AdminPage').then(m => ({ default: m.AdminPage })));
@@ -58,7 +57,6 @@ const router = createBrowserRouter([
       { path: 'photos', element: <Suspense fallback={<PageSkeleton />}><PhotosPage /></Suspense> },
       { path: 'audio', element: <Suspense fallback={<PageSkeleton />}><AudioPage /></Suspense> },
       { path: 'files', element: <Suspense fallback={<PageSkeleton />}><FilesPage /></Suspense> },
-      { path: 'family-tree', element: <Suspense fallback={<PageSkeleton />}><FamilyTreePage /></Suspense> },
       { path: 'timeline', element: <Suspense fallback={<PageSkeleton />}><TimelinePage /></Suspense> },
       { path: 'search', element: <Suspense fallback={<PageSkeleton />}><SearchPage /></Suspense> },
       { path: 'settings/password', element: <Suspense fallback={<PageSkeleton />}><ChangePasswordPage /></Suspense> },

@@ -248,18 +248,17 @@ export function DashboardPage() {
       </div>
 
       {stats ? (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCard label="Vignettes" value={stats.vignettes} to="/vignettes" />
           <StatCard label="Photos" value={stats.photos} to="/photos" />
           <StatCard label="Audio" value={stats.audio_recordings} to="/audio" />
           <StatCard label="Files" value={stats.files} to="/files" />
-          <StatCard label="Family Members" value={stats.family_members} to="/family-tree" />
         </div>
       ) : statsError ? (
         <p className="text-sm text-muted-foreground">Could not load stats — refresh to try again.</p>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
             <div key={i} className="h-24 rounded-lg border border-border bg-muted animate-pulse" />
           ))}
         </div>

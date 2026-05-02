@@ -87,7 +87,7 @@ function VignetteModal({ vignette, isAdmin, onClose, onDetachPhoto }: { vignette
                 {isAdmin && onDetachPhoto && (
                   <button
                     onClick={() => onDetachPhoto(vignette.id, vp.id)}
-                    className="absolute top-1 right-1 hidden group-hover/photo:flex items-center justify-center w-6 h-6 rounded-full bg-black/70 text-white text-xs hover:bg-red-600 transition-colors"
+                    className="absolute top-1 right-1 flex items-center justify-center w-6 h-6 rounded-full bg-black/70 text-white text-xs hover:bg-red-600 transition-colors"
                     title="Remove photo"
                   >
                     ✕
