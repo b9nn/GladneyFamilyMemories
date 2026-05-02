@@ -1,3 +1,4 @@
+import io
 import os
 import secrets
 from datetime import datetime, timedelta
@@ -19,6 +20,17 @@ from .schemas import *
 from .auth import hash_password, verify_password, create_access_token, get_current_user, get_current_admin_user
 from .storage import upload_file, get_file_url, delete_file, get_variant_url
 from . import email as email_mod
+
+
+def _extract_pdf_text(content: bytes) -> Optional[str]:
+    try:
+        from pypdf import PdfReader
+        reader = PdfReader(io.BytesIO(content))
+        parts = [page.extract_text() or '' for page in reader.pages]
+        text = '\n'.join(parts).strip()
+        return text or None
+    except Exception:
+        return None
 
 app = FastAPI(title="Gladney Family Tree API", version="1.0.0")
 
@@ -698,7 +710,8 @@ async def upload_file_ep(
     if ct.startswith("video/") and len(content) > 500 * 1024 * 1024:
         raise HTTPException(400, "Video exceeds 500MB limit")
     key, url = upload_file(content, file.filename or "file", "files", ct)
-    f = models.File(filename=file.filename or "file", file_path=key, title=title, description=description, file_type=ct, source=source, uploaded_by_id=cu.id)
+    extracted_text = _extract_pdf_text(content) if ct == "application/pdf" else None
+    f = models.File(filename=file.filename or "file", file_path=key, title=title, description=description, file_type=ct, source=source, uploaded_by_id=cu.id, extracted_text=extracted_text)
     db.add(f)
     db.commit()
     db.refresh(f)
