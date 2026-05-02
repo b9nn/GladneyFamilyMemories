@@ -120,6 +120,18 @@ def get_file_url(file_path: str) -> str:
     return f"/uploads/{file_path}"
 
 
+def download_file(file_path: str) -> Optional[bytes]:
+    if USE_CLOUD_STORAGE:
+        try:
+            resp = _s3().get_object(Bucket=S3_BUCKET_NAME, Key=file_path)
+            return resp["Body"].read()
+        except ClientError as e:
+            print(f"[STORAGE] Download error for {file_path}: {e}")
+            return None
+    local = LOCAL_UPLOAD_DIR / file_path
+    return local.read_bytes() if local.exists() else None
+
+
 def delete_file(file_path: str) -> bool:
     if USE_CLOUD_STORAGE:
         try:

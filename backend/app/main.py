@@ -18,7 +18,7 @@ from .database import get_db, init_db
 from . import models
 from .schemas import *
 from .auth import hash_password, verify_password, create_access_token, get_current_user, get_current_admin_user
-from .storage import upload_file, get_file_url, delete_file, get_variant_url
+from .storage import upload_file, get_file_url, delete_file, get_variant_url, download_file
 from . import email as email_mod
 
 
@@ -743,6 +743,28 @@ def delete_file_ep(fid: int, db: Session = Depends(get_db), _: models.User = Dep
     db.delete(f)
     db.commit()
     return {"message": "Deleted"}
+
+
+@app.post("/api/admin/backfill-pdf-text")
+def backfill_pdf_text(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    pdfs = db.query(models.File).filter(
+        models.File.file_type == "application/pdf",
+        models.File.extracted_text.is_(None),
+    ).all()
+    processed, failed, skipped = 0, 0, 0
+    for f in pdfs:
+        content = download_file(f.file_path)
+        if content is None:
+            failed += 1
+            continue
+        text = _extract_pdf_text(content)
+        if text:
+            f.extracted_text = text
+            processed += 1
+        else:
+            skipped += 1
+    db.commit()
+    return {"processed": processed, "skipped_no_text": skipped, "failed_download": failed}
 
 
 # ── Family Tree ───────────────────────────────────────────────────────────────
