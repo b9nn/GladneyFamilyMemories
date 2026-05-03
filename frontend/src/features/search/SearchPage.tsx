@@ -40,7 +40,10 @@ export function SearchPage() {
       </div>
 
       {!hasQuery && (
-        <p className="text-muted-foreground text-sm">Type at least 2 characters to search.</p>
+        <div className="space-y-1">
+          <p className="text-muted-foreground text-sm">Type at least 2 characters to search.</p>
+          <p className="text-muted-foreground text-sm">Search results list all items on the website — vignettes, photos, audio recordings, and files — in which the search term was found.</p>
+        </div>
       )}
 
       {hasQuery && (isLoading || isFetching) && (
