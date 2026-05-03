@@ -747,21 +747,13 @@ def delete_file_ep(fid: int, db: Session = Depends(get_db), _: models.User = Dep
 
 @app.post("/api/admin/backfill-pdf-text")
 def backfill_pdf_text(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
-    import traceback
-    try:
-        pdfs = db.query(models.File).filter(
-            models.File.file_type == "application/pdf",
-            models.File.extracted_text.is_(None),
-        ).all()
-    except Exception as e:
-        return {"error": f"query failed: {e}", "traceback": traceback.format_exc()}
+    pdfs = db.query(models.File).filter(
+        models.File.file_type == "application/pdf",
+        models.File.extracted_text.is_(None),
+    ).all()
     processed, failed, skipped = 0, 0, 0
     for f in pdfs:
-        try:
-            content = download_file(f.file_path)
-        except Exception as e:
-            failed += 1
-            continue
+        content = download_file(f.file_path)
         if content is None:
             failed += 1
             continue

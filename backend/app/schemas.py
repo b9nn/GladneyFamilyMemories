@@ -175,6 +175,7 @@ class AudioRecordingUpdate(BaseModel):
 class FileUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
+    extracted_text: Optional[str] = None
 
 
 class FileReorderItem(BaseModel):
