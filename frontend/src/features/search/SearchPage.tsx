@@ -56,9 +56,14 @@ export function SearchPage() {
 
       {hasQuery && !isLoading && !isFetching && results && (
         <>
-          <p className="text-sm text-muted-foreground mb-4">
-            {results.length === 0 ? 'No results' : `${results.length} result${results.length !== 1 ? 's' : ''}`} for "{query}"
-          </p>
+          <div className="mb-4 space-y-1">
+            <p className="text-sm text-muted-foreground">
+              {results.length === 0 ? 'No results' : `${results.length} result${results.length !== 1 ? 's' : ''}`} for "{query}"
+            </p>
+            {results.length > 0 && (
+              <p className="text-sm text-muted-foreground">Search results list all items on the website — vignettes, photos, audio recordings, and files — in which the search term was found.</p>
+            )}
+          </div>
           <div className="space-y-2">
             {results.map((result) => (
               <Link
