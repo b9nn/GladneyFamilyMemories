@@ -27,7 +27,7 @@ def _extract_pdf_text(content: bytes) -> Optional[str]:
         from pypdf import PdfReader
         reader = PdfReader(io.BytesIO(content))
         parts = [page.extract_text() or '' for page in reader.pages]
-        text = '\n'.join(parts).strip()
+        text = '\n'.join(parts).strip().replace('\x00', '')
         return text or None
     except Exception:
         return None
