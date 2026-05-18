@@ -66,6 +66,7 @@ class Photo(Base):
     uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     taken_at = Column(DateTime(timezone=True), nullable=True)
     sort_order = Column(Integer, default=0)
+    source = Column(String, default='photos', server_default='photos')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     uploaded_by = relationship("User", back_populates="photos")

@@ -9,12 +9,14 @@ interface AlbumViewProps {
   album: Album;
   onBack: () => void;
   onLightbox: (photos: Photo[], photo: Photo) => void;
+  allPhotos?: Photo[];
 }
 
-export function AlbumView({ album, onBack, onLightbox }: AlbumViewProps) {
+export function AlbumView({ album, onBack, onLightbox, allPhotos: allPhotosProp }: AlbumViewProps) {
   const isAdmin = useIsAdmin();
   const { data: albumPhotos, isLoading } = useAlbumPhotos(album.id);
-  const { data: allPhotos } = usePhotos();
+  const { data: allPhotosFromQuery } = usePhotos();
+  const allPhotos = allPhotosProp ?? allPhotosFromQuery;
   const removePhoto = useRemovePhotoFromAlbum();
   const addPhoto = useAddPhotoToAlbum();
   const setCover = useSetAlbumCover();

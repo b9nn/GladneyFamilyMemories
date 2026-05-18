@@ -3,15 +3,17 @@ import { useUploadPhoto } from '../hooks/usePhotos';
 
 interface PhotoUploadProps {
   onDone: () => void;
+  upload?: ReturnType<typeof useUploadPhoto>;
 }
 
-export function PhotoUpload({ onDone }: PhotoUploadProps) {
+export function PhotoUpload({ onDone, upload: uploadProp }: PhotoUploadProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState('');
   const [previews, setPreviews] = useState<{ file: File; url: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
-  const upload = useUploadPhoto();
+  const defaultUpload = useUploadPhoto();
+  const upload = uploadProp ?? defaultUpload;
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);

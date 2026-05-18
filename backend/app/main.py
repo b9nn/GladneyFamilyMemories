@@ -456,7 +456,7 @@ def detach_vignette_photo(vid: int, vp_id: int, db: Session = Depends(get_db), _
 
 @app.get("/api/photos", response_model=List[PhotoResponse])
 def list_photos(db: Session = Depends(get_db), _: models.User = Depends(require_page("photos"))):
-    photos = db.query(models.Photo).order_by(models.Photo.sort_order, models.Photo.created_at.desc()).all()
+    photos = db.query(models.Photo).filter(models.Photo.source != 'wedding').order_by(models.Photo.sort_order, models.Photo.created_at.desc()).all()
     result = []
     for p in photos:
         d = PhotoResponse.model_validate(p)
@@ -477,7 +477,7 @@ async def upload_photo(
 ):
     content = await file.read()
     key, url = upload_file(content, file.filename or "photo", "photos", file.content_type, convert_heic=True)
-    photo = models.Photo(filename=file.filename or "photo", file_path=key, title=title, description=description, uploaded_by_id=cu.id)
+    photo = models.Photo(filename=file.filename or "photo", file_path=key, title=title, description=description, uploaded_by_id=cu.id, source='photos')
     db.add(photo)
     db.commit()
     db.refresh(photo)
@@ -641,45 +641,40 @@ def remove_from_album(aid: int, pid: int, db: Session = Depends(get_db), _: mode
 
 # ── Wedding ───────────────────────────────────────────────────────────────────
 
-@app.get("/api/wedding/album", response_model=AlbumResponse)
-def get_wedding_album(db: Session = Depends(get_db), _: models.User = Depends(require_page("wedding"))):
-    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
-    if not album:
-        raise HTTPException(404, "No wedding album yet")
-    result = AlbumResponse.model_validate(album)
-    result.photo_count = len(album.album_photos)
+@app.get("/api/wedding/albums", response_model=List[AlbumResponse])
+def list_wedding_albums(db: Session = Depends(get_db), _: models.User = Depends(require_page("wedding"))):
+    albums = db.query(models.Album).filter(models.Album.is_wedding == True).order_by(models.Album.sort_order, models.Album.created_at.desc()).all()  # noqa: E712
+    result = []
+    for a in albums:
+        d = AlbumResponse.model_validate(a)
+        d.photo_count = len(a.album_photos)
+        if not d.background_image and a.album_photos:
+            latest = max(a.album_photos, key=lambda ap: ap.added_at or ap.id)
+            d.background_image = get_file_url(latest.photo.file_path)
+        result.append(d)
     return result
 
 
-@app.put("/api/wedding/album", response_model=AlbumResponse)
-def upsert_wedding_album(payload: AlbumCreate, db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
-    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
-    if album:
-        album.name = payload.name
-        if payload.description is not None:
-            album.description = payload.description
-    else:
-        album = models.Album(name=payload.name, description=payload.description, is_wedding=True, created_by_id=cu.id)
-        db.add(album)
+@app.post("/api/wedding/albums", response_model=AlbumResponse)
+def create_wedding_album(payload: AlbumCreate, db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
+    a = models.Album(name=payload.name, description=payload.description, is_wedding=True, created_by_id=cu.id)
+    db.add(a)
     db.commit()
-    db.refresh(album)
-    result = AlbumResponse.model_validate(album)
-    result.photo_count = len(album.album_photos)
+    db.refresh(a)
+    result = AlbumResponse.model_validate(a)
+    result.photo_count = 0
     return result
 
 
 @app.get("/api/wedding/photos", response_model=List[PhotoResponse])
 def get_wedding_photos(db: Session = Depends(get_db), _: models.User = Depends(require_page("wedding"))):
-    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
-    if not album:
-        return []
-    sorted_aps = sorted(album.album_photos, key=lambda ap: (ap.sort_order, ap.id))
+    photos = db.query(models.Photo).filter(models.Photo.source == 'wedding').order_by(models.Photo.sort_order, models.Photo.created_at.desc()).all()
     result = []
-    for ap in sorted_aps:
-        d = PhotoResponse.model_validate(ap.photo)
-        d.url = get_file_url(ap.photo.file_path)
-        d.thumb_url = get_variant_url(ap.photo.file_path, "thumb")
-        d.medium_url = get_variant_url(ap.photo.file_path, "med")
+    for p in photos:
+        d = PhotoResponse.model_validate(p)
+        d.url = get_file_url(p.file_path)
+        d.thumb_url = get_variant_url(p.file_path, "thumb")
+        d.medium_url = get_variant_url(p.file_path, "med")
         result.append(d)
     return result
 
@@ -688,57 +683,21 @@ def get_wedding_photos(db: Session = Depends(get_db), _: models.User = Depends(r
 async def upload_wedding_photo(
     file: UploadFile = F(...),
     title: Optional[str] = Form(None),
+    description: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     cu: models.User = Depends(get_current_admin_user),
 ):
-    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
-    if not album:
-        album = models.Album(name="Megan/Hongyu Wedding", is_wedding=True, created_by_id=cu.id)
-        db.add(album)
-        db.commit()
-        db.refresh(album)
     content = await file.read()
     key, url = upload_file(content, file.filename or "photo", "photos", file.content_type, convert_heic=True)
-    photo = models.Photo(filename=file.filename or "photo", file_path=key, title=title, uploaded_by_id=cu.id)
+    photo = models.Photo(filename=file.filename or "photo", file_path=key, title=title, description=description, uploaded_by_id=cu.id, source='wedding')
     db.add(photo)
     db.commit()
     db.refresh(photo)
-    max_order = max((ap.sort_order for ap in album.album_photos), default=-1) + 1
-    ap = models.AlbumPhoto(album_id=album.id, photo_id=photo.id, sort_order=max_order)
-    db.add(ap)
-    db.commit()
     result = PhotoResponse.model_validate(photo)
     result.url = url
     result.thumb_url = get_variant_url(key, "thumb")
     result.medium_url = get_variant_url(key, "med")
     return result
-
-
-@app.delete("/api/wedding/photos/{pid}")
-def delete_wedding_photo(pid: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
-    p = db.query(models.Photo).filter(models.Photo.id == pid).first()
-    if not p:
-        raise HTTPException(404, "Not found")
-    delete_file(p.file_path)
-    db.delete(p)
-    db.commit()
-    return {"message": "Deleted"}
-
-
-@app.put("/api/wedding/photos/reorder")
-def reorder_wedding_photos(items: List[AlbumPhotoReorderItem], db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
-    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
-    if not album:
-        raise HTTPException(404, "Wedding album not found")
-    for item in items:
-        ap = db.query(models.AlbumPhoto).filter(
-            models.AlbumPhoto.album_id == album.id,
-            models.AlbumPhoto.photo_id == item.photo_id,
-        ).first()
-        if ap:
-            ap.sort_order = item.sort_order
-    db.commit()
-    return {"message": "Reordered"}
 
 
 # ── Audio ─────────────────────────────────────────────────────────────────────
