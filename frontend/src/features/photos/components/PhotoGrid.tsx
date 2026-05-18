@@ -146,6 +146,11 @@ function PhotoEditModal({ photo, onSave, onClose }: PhotoEditModalProps) {
 function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onUpdate, onAddToAlbum, onPhotoDragStart, onPhotoDragEnd, deleteLabel, draggable, showDetails }: PhotoCardProps) {
   const [takenAt, setTakenAt] = useState(photo.taken_at ? photo.taken_at.slice(0, 10) : '');
   const [showAlbumPicker, setShowAlbumPicker] = useState(false);
+
+  // Sync inline date input when the photo prop updates after a modal save + refetch
+  useEffect(() => {
+    setTakenAt(photo.taken_at ? photo.taken_at.slice(0, 10) : '');
+  }, [photo.taken_at]);
   const [showEditModal, setShowEditModal] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 

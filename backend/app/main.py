@@ -505,7 +505,7 @@ def update_photo(pid: int, payload: PhotoUpdate, db: Session = Depends(get_db), 
     p = db.query(models.Photo).filter(models.Photo.id == pid).first()
     if not p:
         raise HTTPException(404, "Not found")
-    for field, val in payload.model_dump(exclude_none=True).items():
+    for field, val in payload.model_dump(exclude_unset=True).items():
         setattr(p, field, val)
     db.commit()
     db.refresh(p)
