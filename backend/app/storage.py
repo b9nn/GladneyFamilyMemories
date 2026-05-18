@@ -89,11 +89,12 @@ def upload_file(
         content_type, _ = mimetypes.guess_type(filename)
         content_type = content_type or "application/octet-stream"
 
+    is_video = (content_type or "").startswith("video/")
+
     if USE_CLOUD_STORAGE:
         _s3().put_object(Bucket=S3_BUCKET_NAME, Key=key, Body=file_bytes, ContentType=content_type)
-        # For photo uploads, also generate and upload thumbnail + medium variants.
-        # Best-effort: if variant generation fails, the original upload still succeeds.
-        if category == "photos":
+        # Generate thumbnail + medium variants for images only (not videos).
+        if category == "photos" and not is_video:
             try:
                 base_no_ext = key.rsplit(".", 1)[0]
                 thumb = _make_variant(file_bytes, max_width=400, quality=80)

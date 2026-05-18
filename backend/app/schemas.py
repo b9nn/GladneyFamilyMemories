@@ -115,6 +115,7 @@ class PhotoResponse(BaseModel):
     uploaded_by_id: int
     taken_at: Optional[datetime] = None
     sort_order: int
+    media_type: Optional[str] = 'image'
     created_at: datetime
     model_config = {"from_attributes": True}
 

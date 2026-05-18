@@ -66,17 +66,17 @@ export function PhotoUpload({ onDone, upload: uploadProp }: PhotoUploadProps) {
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
-          const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.name.toLowerCase().endsWith('.heic'));
+          const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/') || f.type.startsWith('video/') || f.name.toLowerCase().endsWith('.heic'));
           const newPreviews = files.map(f => ({ file: f, url: URL.createObjectURL(f) }));
           setPreviews(prev => [...prev, ...newPreviews]);
         }}
       >
-        <p className="text-muted-foreground text-sm">Click or drag photos here</p>
-        <p className="text-xs text-muted-foreground mt-1">Supports JPEG, PNG, HEIC, WebP</p>
+        <p className="text-muted-foreground text-sm">Click or drag photos or videos here</p>
+        <p className="text-xs text-muted-foreground mt-1">Supports JPEG, PNG, HEIC, WebP, MP4, MOV</p>
         <input
           ref={fileRef}
           type="file"
-          accept="image/*,.heic,.heif"
+          accept="image/*,.heic,.heif,video/*"
           multiple
           className="hidden"
           onChange={handleFileChange}
@@ -84,9 +84,20 @@ export function PhotoUpload({ onDone, upload: uploadProp }: PhotoUploadProps) {
       </div>
       {previews.length > 0 && (
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
-          {previews.map(({ url }, i) => (
+          {previews.map(({ file, url }, i) => (
             <div key={i} className="relative group aspect-square">
-              <img src={url} alt="" className="w-full h-full object-cover rounded" />
+              {file.type.startsWith('video/') ? (
+                <>
+                  <video src={url} className="w-full h-full object-cover rounded" muted playsInline />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="rounded-full bg-black/50 w-8 h-8 flex items-center justify-center">
+                      <span className="text-white text-xs">▶</span>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <img src={url} alt="" className="w-full h-full object-cover rounded" />
+              )}
               <button
                 type="button"
                 onClick={() => removePreview(i)}
@@ -106,7 +117,7 @@ export function PhotoUpload({ onDone, upload: uploadProp }: PhotoUploadProps) {
             disabled={uploading}
             className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
           >
-            {uploading ? `Uploading ${previews.length} photo${previews.length > 1 ? 's' : ''}…` : `Upload ${previews.length} photo${previews.length > 1 ? 's' : ''}`}
+            {uploading ? `Uploading ${previews.length} item${previews.length > 1 ? 's' : ''}…` : `Upload ${previews.length} item${previews.length > 1 ? 's' : ''}`}
           </button>
           <button
             type="button"

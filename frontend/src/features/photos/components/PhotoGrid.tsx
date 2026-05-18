@@ -180,9 +180,21 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
         onDragStart={draggable ? (e) => { e.dataTransfer.setData('photoId', String(photo.id)); onPhotoDragStart?.(photo.id); } : undefined}
         onDragEnd={draggable ? () => onPhotoDragEnd?.() : undefined}
       >
-        {/* Image */}
+        {/* Image / Video thumbnail */}
         <div className="relative aspect-square overflow-hidden bg-muted">
-          {(photo.thumb_url || photo.url) ? (
+          {photo.media_type === 'video' ? (
+            <div
+              className="w-full h-full flex items-center justify-center bg-muted cursor-pointer"
+              onClick={() => onSelect?.(photo)}
+            >
+              <div className="rounded-full bg-black/60 w-12 h-12 flex items-center justify-center">
+                <span className="text-white text-lg ml-0.5">▶</span>
+              </div>
+              {photo.title && (
+                <p className="absolute bottom-1 left-1 right-1 text-xs text-white text-center truncate px-1">{photo.title}</p>
+              )}
+            </div>
+          ) : (photo.thumb_url || photo.url) ? (
             <img
               src={photo.thumb_url || photo.url || ''}
               onError={(e) => {

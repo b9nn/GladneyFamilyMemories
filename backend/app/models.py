@@ -69,6 +69,8 @@ class Photo(Base):
     source = Column(String, default='photos', server_default='photos')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    media_type = Column(String, default='image', server_default='image')  # 'image' | 'video'
+
     uploaded_by = relationship("User", back_populates="photos")
     vignette_photos = relationship("VignettePhoto", back_populates="photo")
     album_photos = relationship("AlbumPhoto", back_populates="photo")

@@ -402,18 +402,29 @@ function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
 
   if (!photo) return null;
 
+  const isVideo = photo.media_type === 'video';
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90" onClick={onClose}>
       {hasPrev && (
         <button onClick={(e) => { e.stopPropagation(); prev(); }} className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 text-white w-10 h-10 flex items-center justify-center hover:bg-black/90 text-xl z-10">‹</button>
       )}
       <div className="relative max-w-5xl max-h-[90vh] px-16 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
-        <img
-          src={photo.medium_url ?? photo.url ?? ''}
-          onError={(e) => { const img = e.currentTarget; if (photo.url && img.src !== photo.url) img.src = photo.url; }}
-          alt={photo.title ?? photo.filename}
-          className="max-w-full max-h-[80vh] object-contain rounded-lg"
-        />
+        {isVideo ? (
+          <video
+            src={photo.url ?? ''}
+            controls
+            autoPlay
+            className="max-w-full max-h-[80vh] rounded-lg"
+          />
+        ) : (
+          <img
+            src={photo.medium_url ?? photo.url ?? ''}
+            onError={(e) => { const img = e.currentTarget; if (photo.url && img.src !== photo.url) img.src = photo.url; }}
+            alt={photo.title ?? photo.filename}
+            className="max-w-full max-h-[80vh] object-contain rounded-lg"
+          />
+        )}
         {(photo.title || photo.description) && (
           <div className="mt-3 text-center">
             {photo.title && <p className="text-white text-sm font-medium">{photo.title}</p>}

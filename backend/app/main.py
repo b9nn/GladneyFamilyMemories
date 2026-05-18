@@ -683,10 +683,11 @@ def get_wedding_photos(db: Session = Depends(get_db), _: models.User = Depends(r
     photos = db.query(models.Photo).filter(models.Photo.source == 'wedding').order_by(models.Photo.sort_order, models.Photo.created_at.desc()).all()
     result = []
     for p in photos:
+        is_video = getattr(p, 'media_type', 'image') == 'video'
         d = PhotoResponse.model_validate(p)
         d.url = get_file_url(p.file_path)
-        d.thumb_url = get_variant_url(p.file_path, "thumb")
-        d.medium_url = get_variant_url(p.file_path, "med")
+        d.thumb_url = None if is_video else get_variant_url(p.file_path, "thumb")
+        d.medium_url = None if is_video else get_variant_url(p.file_path, "med")
         result.append(d)
     return result
 
@@ -700,15 +701,17 @@ async def upload_wedding_photo(
     cu: models.User = Depends(get_current_admin_user),
 ):
     content = await file.read()
-    key, url = upload_file(content, file.filename or "photo", "photos", file.content_type, convert_heic=True)
-    photo = models.Photo(filename=file.filename or "photo", file_path=key, title=title, description=description, uploaded_by_id=cu.id, source='wedding')
+    is_video = (file.content_type or "").startswith("video/")
+    key, url = upload_file(content, file.filename or "photo", "photos", file.content_type, convert_heic=not is_video)
+    media_type = 'video' if is_video else 'image'
+    photo = models.Photo(filename=file.filename or "photo", file_path=key, title=title, description=description, uploaded_by_id=cu.id, source='wedding', media_type=media_type)
     db.add(photo)
     db.commit()
     db.refresh(photo)
     result = PhotoResponse.model_validate(photo)
     result.url = url
-    result.thumb_url = get_variant_url(key, "thumb")
-    result.medium_url = get_variant_url(key, "med")
+    result.thumb_url = None if is_video else get_variant_url(key, "thumb")
+    result.medium_url = None if is_video else get_variant_url(key, "med")
     return result
 
 
