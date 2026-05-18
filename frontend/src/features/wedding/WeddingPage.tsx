@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PageHeader } from '@/components/shared/PageHeader';
-import { useWeddingPhotos, useUploadWeddingPhoto, useDeleteWeddingPhoto } from './hooks/useWedding';
+import { PhotoGrid } from '@/features/photos/components/PhotoGrid';
+import { useWeddingPhotos, useUploadWeddingPhoto, useDeleteWeddingPhoto, useReorderWeddingPhotos } from './hooks/useWedding';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { Photo } from '@/types/api';
 
@@ -8,6 +9,7 @@ export function WeddingPage() {
   const { data: photos, isLoading } = useWeddingPhotos();
   const uploadPhoto = useUploadWeddingPhoto();
   const deletePhoto = useDeleteWeddingPhoto();
+  const reorderPhotos = useReorderWeddingPhotos();
   const isAdmin = useIsAdmin();
 
   const [showUpload, setShowUpload] = useState(false);
@@ -18,12 +20,8 @@ export function WeddingPage() {
     deletePhoto.mutate(id);
   }
 
-  function openLightbox(idx: number) {
-    setLightboxIndex(idx);
-  }
-
-  function closeLightbox() {
-    setLightboxIndex(null);
+  function handleReorder(orderedIds: number[]) {
+    reorderPhotos.mutate(orderedIds.map((id, i) => ({ photo_id: id, sort_order: i })));
   }
 
   return (
@@ -44,10 +42,7 @@ export function WeddingPage() {
       {showUpload && isAdmin && (
         <div className="mb-8 rounded-lg border border-border bg-card p-6">
           <h2 className="text-base font-semibold text-foreground mb-4">Upload wedding photos</h2>
-          <WeddingUpload
-            onDone={() => setShowUpload(false)}
-            upload={uploadPhoto}
-          />
+          <WeddingUpload onDone={() => setShowUpload(false)} upload={uploadPhoto} />
         </div>
       )}
 
@@ -58,18 +53,23 @@ export function WeddingPage() {
           ))}
         </div>
       ) : !photos?.length ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">
-          No photos yet.
-        </div>
+        <div className="py-16 text-center text-sm text-muted-foreground">No photos yet.</div>
+      ) : isAdmin ? (
+        <PhotoGrid
+          photos={photos}
+          isAdmin={isAdmin}
+          onDelete={handleDelete}
+          onSelect={(photo) => setLightboxIndex(photos.findIndex(p => p.id === photo.id))}
+          onReorderPhotos={handleReorder}
+          deleteLabel="Delete"
+        />
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {photos.map((photo, idx) => (
-            <WeddingPhotoCard
+            <GuestPhotoCard
               key={photo.id}
               photo={photo}
-              isAdmin={isAdmin}
-              onClick={() => openLightbox(idx)}
-              onDelete={() => handleDelete(photo.id)}
+              onClick={() => setLightboxIndex(idx)}
             />
           ))}
         </div>
@@ -80,21 +80,16 @@ export function WeddingPage() {
           photos={photos}
           index={lightboxIndex}
           onIndexChange={setLightboxIndex}
-          onClose={closeLightbox}
+          onClose={() => setLightboxIndex(null)}
         />
       )}
     </div>
   );
 }
 
-interface WeddingPhotoCardProps {
-  photo: Photo;
-  isAdmin: boolean;
-  onClick: () => void;
-  onDelete: () => void;
-}
+// ── Guest photo card (non-admin, large grid with download) ────────────────────
 
-function WeddingPhotoCard({ photo, isAdmin, onClick, onDelete }: WeddingPhotoCardProps) {
+function GuestPhotoCard({ photo, onClick }: { photo: Photo; onClick: () => void }) {
   function handleDownload(e: React.MouseEvent) {
     e.stopPropagation();
     if (!photo.url) return;
@@ -117,24 +112,13 @@ function WeddingPhotoCard({ photo, isAdmin, onClick, onDelete }: WeddingPhotoCar
         loading="lazy"
       />
       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
-      <div className="absolute bottom-1.5 right-1.5 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button
-          onClick={handleDownload}
-          title="Download"
-          className="flex items-center justify-center w-7 h-7 rounded-full bg-black/70 text-white text-xs hover:bg-black/90 transition-colors"
-        >
-          ↓
-        </button>
-        {isAdmin && (
-          <button
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
-            title="Delete"
-            className="flex items-center justify-center w-7 h-7 rounded-full bg-black/70 text-white text-xs hover:bg-red-600 transition-colors"
-          >
-            ✕
-          </button>
-        )}
-      </div>
+      <button
+        onClick={handleDownload}
+        title="Download"
+        className="absolute bottom-1.5 right-1.5 flex items-center justify-center w-7 h-7 rounded-full bg-black/70 text-white text-xs hover:bg-black/90 transition-colors opacity-0 group-hover:opacity-100"
+      >
+        ↓
+      </button>
       {photo.title && (
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <p className="text-white text-xs truncate">{photo.title}</p>
@@ -143,6 +127,8 @@ function WeddingPhotoCard({ photo, isAdmin, onClick, onDelete }: WeddingPhotoCar
     </div>
   );
 }
+
+// ── Upload panel ──────────────────────────────────────────────────────────────
 
 interface WeddingUploadProps {
   onDone: () => void;
@@ -233,6 +219,8 @@ function WeddingUpload({ onDone, upload }: WeddingUploadProps) {
   );
 }
 
+// ── Lightbox ──────────────────────────────────────────────────────────────────
+
 interface LightboxProps {
   photos: Photo[];
   index: number;
@@ -285,10 +273,7 @@ function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
       <div className="relative max-w-5xl max-h-[90vh] px-16 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
         <img
           src={photo.medium_url ?? photo.url ?? ''}
-          onError={(e) => {
-            const img = e.currentTarget;
-            if (photo.url && img.src !== photo.url) img.src = photo.url;
-          }}
+          onError={(e) => { const img = e.currentTarget; if (photo.url && img.src !== photo.url) img.src = photo.url; }}
           alt={photo.title ?? photo.filename}
           className="max-w-full max-h-[80vh] object-contain rounded-lg"
         />
@@ -298,9 +283,7 @@ function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
             {photo.description && <p className="text-white/70 text-xs mt-1">{photo.description}</p>}
           </div>
         )}
-        {photos.length > 1 && (
-          <p className="mt-2 text-white/40 text-xs">{index + 1} / {photos.length}</p>
-        )}
+        {photos.length > 1 && <p className="mt-2 text-white/40 text-xs">{index + 1} / {photos.length}</p>}
       </div>
       {hasNext && (
         <button
@@ -310,12 +293,7 @@ function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
           ›
         </button>
       )}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 rounded-full bg-black/60 text-white w-9 h-9 flex items-center justify-center hover:bg-black/90 text-sm z-10"
-      >
-        ✕
-      </button>
+      <button onClick={onClose} className="absolute top-4 right-4 rounded-full bg-black/60 text-white w-9 h-9 flex items-center justify-center hover:bg-black/90 text-sm z-10">✕</button>
       <button
         onClick={(e) => { e.stopPropagation(); handleDownload(); }}
         title="Download"

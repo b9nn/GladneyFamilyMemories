@@ -9,4 +9,6 @@ export const weddingApi = {
     return client.post<Photo>('/api/wedding/photos', form).then(r => r.data)
   },
   deletePhoto: (id: number) => client.delete(`/api/wedding/photos/${id}`).then(r => r.data),
+  reorderPhotos: (items: { photo_id: number; sort_order: number }[]) =>
+    client.put('/api/wedding/photos/reorder', items).then(r => r.data),
 }

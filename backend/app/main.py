@@ -698,6 +698,22 @@ def delete_wedding_photo(pid: int, db: Session = Depends(get_db), _: models.User
     return {"message": "Deleted"}
 
 
+@app.put("/api/wedding/photos/reorder")
+def reorder_wedding_photos(items: List[AlbumPhotoReorderItem], db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
+    if not album:
+        raise HTTPException(404, "Wedding album not found")
+    for item in items:
+        ap = db.query(models.AlbumPhoto).filter(
+            models.AlbumPhoto.album_id == album.id,
+            models.AlbumPhoto.photo_id == item.photo_id,
+        ).first()
+        if ap:
+            ap.sort_order = item.sort_order
+    db.commit()
+    return {"message": "Reordered"}
+
+
 # ── Audio ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/audio", response_model=List[AudioRecordingResponse])
