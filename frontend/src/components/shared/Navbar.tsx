@@ -13,7 +13,7 @@ const navLinks: { to: string; label: string; page?: PageKey }[] = [
   { to: '/files', label: 'Files', page: 'files' },
   { to: '/timeline', label: 'Timeline', page: 'timeline' },
   { to: '/search', label: 'Search', page: 'search' },
-  { to: '/wedding', label: 'Wedding' },
+  { to: '/wedding', label: 'Wedding', page: 'wedding' },
 ];
 
 export function Navbar() {

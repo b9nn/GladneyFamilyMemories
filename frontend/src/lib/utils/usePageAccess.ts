@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 
-export const ALL_PAGES = ['vignettes', 'photos', 'audio', 'files', 'timeline', 'search'] as const;
+export const ALL_PAGES = ['vignettes', 'photos', 'audio', 'files', 'timeline', 'search', 'wedding'] as const;
 export type PageKey = typeof ALL_PAGES[number];
 
 export function usePageAccess() {
@@ -8,7 +8,7 @@ export function usePageAccess() {
 
   function canAccess(page: PageKey): boolean {
     if (!user) return false;
-    if (user.is_admin || user.page_access === null) return true;
+    if (user.is_admin || user.page_access == null) return true;
     const allowed = new Set(user.page_access.split(',').map((p) => p.trim()).filter(Boolean));
     return allowed.has(page);
   }

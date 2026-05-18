@@ -176,15 +176,30 @@ def admin_list_users(db: Session = Depends(get_db), _: models.User = Depends(get
     return db.query(models.User).order_by(models.User.created_at.desc()).all()
 
 
+_ALL_PAGES = {'vignettes', 'photos', 'audio', 'files', 'timeline', 'search', 'wedding'}
+
+def _page_set(page_access: Optional[str]) -> set:
+    if page_access is None:
+        return set(_ALL_PAGES)
+    return {p.strip() for p in page_access.split(',') if p.strip()}
+
+
 @app.put("/api/admin/users/{user_id}", response_model=UserResponse)
 def admin_update_user(user_id: int, payload: UserAdminUpdate, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
-    for field, val in payload.model_dump(exclude_none=True).items():
+    update_data = payload.model_dump(exclude_unset=True)
+    old_page_access = user.page_access
+    for field, val in update_data.items():
         setattr(user, field, val)
     db.commit()
     db.refresh(user)
+    if 'page_access' in update_data and user.email:
+        newly_granted = _page_set(user.page_access) - _page_set(old_page_access)
+        if newly_granted:
+            from .email import send_page_access_expanded_email
+            send_page_access_expanded_email(user.email, user.full_name or user.username, newly_granted, db)
     return user
 
 
@@ -627,7 +642,7 @@ def remove_from_album(aid: int, pid: int, db: Session = Depends(get_db), _: mode
 # ── Wedding ───────────────────────────────────────────────────────────────────
 
 @app.get("/api/wedding/photos", response_model=List[PhotoResponse])
-def get_wedding_photos(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+def get_wedding_photos(db: Session = Depends(get_db), _: models.User = Depends(require_page("wedding"))):
     album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
     if not album:
         return []

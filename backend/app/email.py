@@ -103,6 +103,30 @@ def send_password_reset_email(to_email: str, username: str, token: str, db: 'Ses
     return ok
 
 
+_PAGE_DISPLAY_NAMES = {
+    'vignettes': 'Vignettes', 'photos': 'Photos', 'audio': 'Audio',
+    'files': 'Files', 'timeline': 'Timeline', 'search': 'Search', 'wedding': 'Wedding',
+}
+
+
+def send_page_access_expanded_email(to_email: str, to_name: str, newly_granted: set, db: 'Session | None' = None) -> None:
+    cfg = get_smtp_config(db)
+    site_url = cfg['site_url'] or 'https://mrtag.com'
+    page_names = ', '.join(sorted(_PAGE_DISPLAY_NAMES.get(p, p.title()) for p in newly_granted))
+    html = f"""
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      <p>Hi {to_name},</p>
+      <p>Your access to 'Lorna and Tom's Memories' website has been expanded.</p>
+      <p>You can now access: <strong>{page_names}</strong></p>
+      <p style="margin:24px 0;">
+        <a href="{site_url}" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Visit the website</a>
+      </p>
+      <p>Lorna and Tom</p>
+    </div>
+    """
+    send_email(to_email, "Your access has been expanded", html, db)
+
+
 def notify_admin_new_registration(username: str, email: str, db: 'Session | None' = None) -> None:
     cfg = get_smtp_config(db)
     admin_email = cfg['admin_email']

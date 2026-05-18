@@ -67,7 +67,7 @@ const router = createBrowserRouter([
       { path: 'files', element: <PageGuard page="files"><Suspense fallback={<PageSkeleton />}><FilesPage /></Suspense></PageGuard> },
       { path: 'timeline', element: <PageGuard page="timeline"><Suspense fallback={<PageSkeleton />}><TimelinePage /></Suspense></PageGuard> },
       { path: 'search', element: <PageGuard page="search"><Suspense fallback={<PageSkeleton />}><SearchPage /></Suspense></PageGuard> },
-      { path: 'wedding', element: <Suspense fallback={<PageSkeleton />}><WeddingPage /></Suspense> },
+      { path: 'wedding', element: <PageGuard page="wedding"><Suspense fallback={<PageSkeleton />}><WeddingPage /></Suspense></PageGuard> },
       { path: 'settings/password', element: <Suspense fallback={<PageSkeleton />}><ChangePasswordPage /></Suspense> },
       {
         path: 'admin',

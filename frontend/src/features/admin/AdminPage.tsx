@@ -15,7 +15,7 @@ import type { User, Vignette, SmtpConfig, SmtpConfigResponse } from '@/types/api
 
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
-  files: 'Files', timeline: 'Timeline', search: 'Search',
+  files: 'Files', timeline: 'Timeline', search: 'Search', wedding: 'Wedding',
 };
 
 function PageAccessPicker({ value, onChange }: { value: PageKey[]; onChange: (pages: PageKey[]) => void }) {
