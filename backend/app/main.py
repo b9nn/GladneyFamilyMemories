@@ -18,6 +18,18 @@ from .database import get_db, init_db
 from . import models
 from .schemas import *
 from .auth import hash_password, verify_password, create_access_token, get_current_user, get_current_admin_user
+
+
+def require_page(page: str):
+    """Dependency factory — 403 if user's page_access list doesn't include `page`."""
+    def dep(current_user: models.User = Depends(get_current_user)) -> models.User:
+        if current_user.is_admin or current_user.page_access is None:
+            return current_user
+        allowed = {p.strip() for p in current_user.page_access.split(',') if p.strip()}
+        if page not in allowed:
+            raise HTTPException(403, f"Access to '{page}' is not permitted for your account")
+        return current_user
+    return dep
 from .storage import upload_file, get_file_url, delete_file, get_variant_url, download_file
 from . import email as email_mod
 
@@ -76,6 +88,7 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
         email=payload.email,
         full_name=payload.full_name,
         hashed_password=hash_password(payload.password),
+        page_access=invite.page_access,
     )
     db.add(user)
     db.flush()
@@ -195,7 +208,7 @@ def list_invite_codes(db: Session = Depends(get_db), _: models.User = Depends(ge
 
 @app.post("/api/admin/invite-codes", response_model=InviteCodeResponse)
 def create_invite_code(payload: InviteCodeCreate, db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
-    code = models.InviteCode(code=secrets.token_urlsafe(16), email=payload.email, created_by_id=cu.id, expires_at=payload.expires_at)
+    code = models.InviteCode(code=secrets.token_urlsafe(16), email=payload.email, page_access=payload.page_access, created_by_id=cu.id, expires_at=payload.expires_at)
     db.add(code)
     db.commit()
     db.refresh(code)
@@ -204,7 +217,7 @@ def create_invite_code(payload: InviteCodeCreate, db: Session = Depends(get_db),
 
 @app.post("/api/admin/invite-codes/send", response_model=InviteCodeResponse)
 def send_invite(payload: InviteEmailRequest, db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
-    code = models.InviteCode(code=secrets.token_urlsafe(16), email=payload.email, created_by_id=cu.id)
+    code = models.InviteCode(code=secrets.token_urlsafe(16), email=payload.email, page_access=payload.page_access, created_by_id=cu.id)
     db.add(code)
     db.commit()
     db.refresh(code)
@@ -339,7 +352,7 @@ def _populate_vignette_photos(v: models.Vignette) -> VignetteResponse:
 
 
 @app.get("/api/vignettes", response_model=List[VignetteResponse])
-def list_vignettes(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+def list_vignettes(db: Session = Depends(get_db), _: models.User = Depends(require_page("vignettes"))):
     vignettes = db.query(models.Vignette).order_by(models.Vignette.sort_order, models.Vignette.created_at.desc()).all()
     return [_populate_vignette_photos(v) for v in vignettes]
 
@@ -427,7 +440,7 @@ def detach_vignette_photo(vid: int, vp_id: int, db: Session = Depends(get_db), _
 # ── Photos ────────────────────────────────────────────────────────────────────
 
 @app.get("/api/photos", response_model=List[PhotoResponse])
-def list_photos(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+def list_photos(db: Session = Depends(get_db), _: models.User = Depends(require_page("photos"))):
     photos = db.query(models.Photo).order_by(models.Photo.sort_order, models.Photo.created_at.desc()).all()
     result = []
     for p in photos:
@@ -490,7 +503,7 @@ def delete_photo(pid: int, db: Session = Depends(get_db), _: models.User = Depen
 # ── Albums ────────────────────────────────────────────────────────────────────
 
 @app.get("/api/albums", response_model=List[AlbumResponse])
-def list_albums(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+def list_albums(db: Session = Depends(get_db), _: models.User = Depends(require_page("photos"))):
     albums = db.query(models.Album).order_by(models.Album.sort_order, models.Album.created_at.desc()).all()
     result = []
     for a in albums:
@@ -614,7 +627,7 @@ def remove_from_album(aid: int, pid: int, db: Session = Depends(get_db), _: mode
 # ── Audio ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/audio", response_model=List[AudioRecordingResponse])
-def list_audio(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+def list_audio(db: Session = Depends(get_db), _: models.User = Depends(require_page("audio"))):
     recordings = db.query(models.AudioRecording).order_by(models.AudioRecording.created_at.desc()).all()
     result = []
     for r in recordings:
@@ -672,7 +685,7 @@ def delete_audio(rid: int, db: Session = Depends(get_db), _: models.User = Depen
 # ── Files ─────────────────────────────────────────────────────────────────────
 
 @app.get("/api/files", response_model=List[FileResponse])
-def list_files(source: str = Query("files"), db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+def list_files(source: str = Query("files"), db: Session = Depends(get_db), _: models.User = Depends(require_page("files"))):
     files = db.query(models.File).filter(models.File.source == source).order_by(models.File.sort_order.asc(), models.File.created_at.desc()).all()
     result = []
     for f in files:
@@ -910,7 +923,7 @@ def timeline(
     limit: int = Query(50, le=100),
     offset: int = Query(0),
     db: Session = Depends(get_db),
-    _: models.User = Depends(get_current_user),
+    _: models.User = Depends(require_page("timeline")),
 ):
     types = set(content_types.split(",")) if content_types else {"vignette", "photo", "audio", "file"}
     items: List[TimelineItem] = []

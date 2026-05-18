@@ -1,7 +1,14 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { Layout } from './Layout';
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute';
+import { usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
+
+function PageGuard({ page, children }: { page: PageKey; children: React.ReactNode }) {
+  const canAccess = usePageAccess();
+  if (!canAccess(page)) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
 
 const LoginPage = lazy(() => import('@/features/auth/LoginPage').then(m => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('@/features/auth/RegisterPage').then(m => ({ default: m.RegisterPage })));
@@ -53,12 +60,12 @@ const router = createBrowserRouter([
     ),
     children: [
       { index: true, element: <Suspense fallback={<PageSkeleton />}><DashboardPage /></Suspense> },
-      { path: 'vignettes', element: <Suspense fallback={<PageSkeleton />}><VignettesPage /></Suspense> },
-      { path: 'photos', element: <Suspense fallback={<PageSkeleton />}><PhotosPage /></Suspense> },
-      { path: 'audio', element: <Suspense fallback={<PageSkeleton />}><AudioPage /></Suspense> },
-      { path: 'files', element: <Suspense fallback={<PageSkeleton />}><FilesPage /></Suspense> },
-      { path: 'timeline', element: <Suspense fallback={<PageSkeleton />}><TimelinePage /></Suspense> },
-      { path: 'search', element: <Suspense fallback={<PageSkeleton />}><SearchPage /></Suspense> },
+      { path: 'vignettes', element: <PageGuard page="vignettes"><Suspense fallback={<PageSkeleton />}><VignettesPage /></Suspense></PageGuard> },
+      { path: 'photos', element: <PageGuard page="photos"><Suspense fallback={<PageSkeleton />}><PhotosPage /></Suspense></PageGuard> },
+      { path: 'audio', element: <PageGuard page="audio"><Suspense fallback={<PageSkeleton />}><AudioPage /></Suspense></PageGuard> },
+      { path: 'files', element: <PageGuard page="files"><Suspense fallback={<PageSkeleton />}><FilesPage /></Suspense></PageGuard> },
+      { path: 'timeline', element: <PageGuard page="timeline"><Suspense fallback={<PageSkeleton />}><TimelinePage /></Suspense></PageGuard> },
+      { path: 'search', element: <PageGuard page="search"><Suspense fallback={<PageSkeleton />}><SearchPage /></Suspense></PageGuard> },
       { path: 'settings/password', element: <Suspense fallback={<PageSkeleton />}><ChangePasswordPage /></Suspense> },
       {
         path: 'admin',

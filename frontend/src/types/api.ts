@@ -1,14 +1,14 @@
 export interface User {
   id: number; username: string; email: string | null; full_name: string | null
-  is_admin: boolean; is_active: boolean; created_at: string
+  is_admin: boolean; is_active: boolean; page_access: string | null; created_at: string
 }
 export interface TokenResponse { access_token: string; token_type: string; user: User }
 export interface UserRegister { username: string; password: string; email?: string; full_name?: string; invite_code: string }
 export interface UserLogin { username: string; password: string }
 export interface PasswordChange { current_password: string; new_password: string }
 
-export interface InviteCode { id: number; code: string; email: string | null; used_by_id: number | null; expires_at: string | null; created_at: string; email_sent?: boolean | null }
-export interface InviteCodeCreate { email?: string; expires_at?: string }
+export interface InviteCode { id: number; code: string; email: string | null; used_by_id: number | null; expires_at: string | null; page_access: string | null; created_at: string; email_sent?: boolean | null }
+export interface InviteCodeCreate { email?: string; expires_at?: string; page_access?: string | null }
 
 export interface VignettePhoto { id: number; photo_id: number; url: string | null }
 export interface Vignette { id: number; title: string; content: string | null; author_id: number; sort_order: number; created_at: string; updated_at: string; photos: VignettePhoto[] }
@@ -41,7 +41,7 @@ export interface SearchResult { content_type: string; id: number; title: string;
 export interface TimelineItem { content_type: string; id: number; title: string; description: string | null; thumbnail_url: string | null; created_at: string }
 
 export interface DashboardStats { vignettes: number; photos: number; audio_recordings: number; files: number; family_members: number }
-export interface UserAdminUpdate { is_active?: boolean; is_admin?: boolean; full_name?: string; email?: string }
+export interface UserAdminUpdate { is_active?: boolean; is_admin?: boolean; full_name?: string; email?: string; page_access?: string | null }
 
 export interface SmtpConfig { smtp_host: string; smtp_port: number; smtp_user: string; smtp_password: string; from_email: string; from_name: string; admin_email: string; site_url: string }
 export interface SmtpConfigResponse { smtp_host: string; smtp_port: number; smtp_user: string; from_email: string; from_name: string; admin_email: string; site_url: string; configured: boolean }

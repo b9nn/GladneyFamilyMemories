@@ -48,7 +48,7 @@ export function useDeleteInviteCode() {
 export function useSendInvite() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ email, name }: { email: string; name: string }) => adminApi.sendInvite(email, name),
+    mutationFn: ({ email, name, page_access }: { email: string; name: string; page_access?: string | null }) => adminApi.sendInvite(email, name, page_access),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin', 'invite-codes'] });
       toast('Invitation email sent', 'success');

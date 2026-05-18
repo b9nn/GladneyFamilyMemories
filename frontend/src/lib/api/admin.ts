@@ -5,7 +5,7 @@ export const adminApi = {
   updateUser: (id: number, data: UserAdminUpdate) => client.put<User>(`/api/admin/users/${id}`, data).then(r => r.data),
   listInviteCodes: () => client.get<InviteCode[]>('/api/admin/invite-codes').then(r => r.data),
   createInviteCode: (data: InviteCodeCreate) => client.post<InviteCode>('/api/admin/invite-codes', data).then(r => r.data),
-  sendInvite: (email: string, name: string) => client.post<InviteCode>('/api/admin/invite-codes/send', { email, name }).then(r => r.data),
+  sendInvite: (email: string, name: string, page_access?: string | null) => client.post<InviteCode>('/api/admin/invite-codes/send', { email, name, page_access }).then(r => r.data),
   deleteInviteCode: (id: number) => client.delete(`/api/admin/invite-codes/${id}`).then(r => r.data),
   deleteUser: (id: number) => client.delete(`/api/admin/users/${id}`).then(r => r.data),
   uploadBackground: (file: File) => { const form = new FormData(); form.append('file', file); return client.post('/api/admin/background', form).then(r => r.data) },

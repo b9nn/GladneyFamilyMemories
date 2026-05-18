@@ -28,6 +28,7 @@ class UserResponse(BaseModel):
     full_name: Optional[str] = None
     is_admin: bool
     is_active: bool
+    page_access: Optional[str] = None
     created_at: datetime
     model_config = {"from_attributes": True}
 
@@ -48,10 +49,12 @@ class ResetPasswordRequest(BaseModel):
 class InviteCodeCreate(BaseModel):
     email: Optional[str] = None
     expires_at: Optional[datetime] = None
+    page_access: Optional[str] = None
 
 class InviteEmailRequest(BaseModel):
     email: str
     name: str
+    page_access: Optional[str] = None
 
 class InviteCodeResponse(BaseModel):
     id: int
@@ -59,6 +62,7 @@ class InviteCodeResponse(BaseModel):
     email: Optional[str] = None
     used_by_id: Optional[int] = None
     expires_at: Optional[datetime] = None
+    page_access: Optional[str] = None
     created_at: datetime
     email_sent: Optional[bool] = None
     model_config = {"from_attributes": True}
@@ -302,6 +306,7 @@ class UserAdminUpdate(BaseModel):
     is_admin: Optional[bool] = None
     full_name: Optional[str] = None
     email: Optional[str] = None
+    page_access: Optional[str] = None
 
 class DashboardStats(BaseModel):
     vignettes: int

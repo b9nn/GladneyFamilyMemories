@@ -10,16 +10,129 @@ import { usePhotos, useDeletePhoto } from '@/features/photos/hooks/usePhotos';
 import { useAudioList, useDeleteAudio } from '@/features/audio/hooks/useAudio';
 import { useFiles, useDeleteFile } from '@/features/files/hooks/useFiles';
 import { formatDate } from '@/lib/utils/date';
+import { ALL_PAGES, pageAccessToString, stringToPageAccess, type PageKey } from '@/lib/utils/usePageAccess';
 import type { User, Vignette, SmtpConfig, SmtpConfigResponse } from '@/types/api';
 
-function UsersSection() {
-  const { data: users, isLoading } = useAdminUsers();
-  const updateUser = useUpdateUser();
+const PAGE_LABELS: Record<PageKey, string> = {
+  vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
+  files: 'Files', timeline: 'Timeline', search: 'Search',
+};
 
-  function toggle(user: User, field: 'is_active' | 'is_admin') {
+function PageAccessPicker({ value, onChange }: { value: PageKey[]; onChange: (pages: PageKey[]) => void }) {
+  const allSelected = value.length === ALL_PAGES.length;
+  function toggle(page: PageKey) {
+    onChange(value.includes(page) ? value.filter((p) => p !== page) : [...value, page]);
+  }
+  function toggleAll() {
+    onChange(allSelected ? [] : [...ALL_PAGES]);
+  }
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-medium text-muted-foreground">Page access</p>
+      <div className="flex flex-wrap gap-2">
+        <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+          <input type="checkbox" checked={allSelected} onChange={toggleAll} className="rounded" />
+          <span className={allSelected ? 'text-foreground font-medium' : 'text-muted-foreground'}>All pages</span>
+        </label>
+        {ALL_PAGES.map((page) => (
+          <label key={page} className="flex items-center gap-1.5 text-xs cursor-pointer select-none">
+            <input type="checkbox" checked={value.includes(page)} onChange={() => toggle(page)} className="rounded" />
+            <span className={value.includes(page) ? 'text-foreground' : 'text-muted-foreground'}>{PAGE_LABELS[page]}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UserRow({ user }: { user: User }) {
+  const updateUser = useUpdateUser();
+  const [editingAccess, setEditingAccess] = useState(false);
+  const [pages, setPages] = useState<PageKey[]>(stringToPageAccess(user.page_access));
+
+  function toggle(field: 'is_active' | 'is_admin') {
     if (!confirm(`Set ${field === 'is_admin' ? 'admin' : 'active'} = ${!user[field]} for ${user.username}?`)) return;
     updateUser.mutate({ id: user.id, data: { [field]: !user[field] } });
   }
+
+  function saveAccess() {
+    const page_access = pageAccessToString(pages);
+    updateUser.mutate({ id: user.id, data: { page_access } }, { onSuccess: () => setEditingAccess(false) });
+  }
+
+  const accessLabel = user.is_admin
+    ? 'Admin (all)'
+    : user.page_access === null
+    ? 'All pages'
+    : user.page_access.split(',').map((p) => PAGE_LABELS[p.trim() as PageKey] ?? p).join(', ') || 'No pages';
+
+  return (
+    <div className="px-4 py-3 space-y-2">
+      <div className="flex items-center gap-4">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground">
+            {user.username}
+            {user.full_name && <span className="text-muted-foreground ml-2">({user.full_name})</span>}
+          </p>
+          <p className="text-xs text-muted-foreground">{user.email ?? 'No email'} · Joined {formatDate(user.created_at)}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            onClick={() => toggle('is_admin')}
+            className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
+              user.is_admin
+                ? 'bg-primary/10 text-primary hover:bg-destructive/10 hover:text-destructive'
+                : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
+            }`}
+          >
+            {user.is_admin ? 'Admin' : 'User'}
+          </button>
+          <button
+            onClick={() => toggle('is_active')}
+            className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
+              user.is_active
+                ? 'bg-green-100 text-green-700 hover:bg-red-100 hover:text-red-700 dark:bg-green-900/30 dark:text-green-400'
+                : 'bg-red-100 text-red-700 hover:bg-green-100 hover:text-green-700 dark:bg-red-900/30 dark:text-red-400'
+            }`}
+          >
+            {user.is_active ? 'Active' : 'Disabled'}
+          </button>
+          {!user.is_admin && (
+            <button
+              onClick={() => { setPages(stringToPageAccess(user.page_access)); setEditingAccess((v) => !v); }}
+              className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pages
+            </button>
+          )}
+        </div>
+      </div>
+      {!user.is_admin && (
+        <p className="text-xs text-muted-foreground">Access: {accessLabel}</p>
+      )}
+      {editingAccess && !user.is_admin && (
+        <div className="rounded-md border border-border bg-muted/40 p-3 space-y-3">
+          <PageAccessPicker value={pages} onChange={setPages} />
+          <div className="flex gap-2">
+            <button
+              onClick={saveAccess}
+              disabled={updateUser.isPending}
+              className="rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {updateUser.isPending ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={() => setEditingAccess(false)} className="rounded-md border border-input px-3 py-1.5 text-xs text-foreground hover:bg-accent">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UsersSection() {
+  const { data: users, isLoading } = useAdminUsers();
 
   return (
     <section>
@@ -32,39 +145,7 @@ function UsersSection() {
         </div>
       ) : (
         <div className="rounded-lg border border-border divide-y divide-border">
-          {users?.map((user) => (
-            <div key={user.id} className="flex items-center gap-4 px-4 py-3">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground">
-                  {user.username}
-                  {user.full_name && <span className="text-muted-foreground ml-2">({user.full_name})</span>}
-                </p>
-                <p className="text-xs text-muted-foreground">{user.email ?? 'No email'} · Joined {formatDate(user.created_at)}</p>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <button
-                  onClick={() => toggle(user, 'is_admin')}
-                  className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
-                    user.is_admin
-                      ? 'bg-primary/10 text-primary hover:bg-destructive/10 hover:text-destructive'
-                      : 'bg-muted text-muted-foreground hover:bg-primary/10 hover:text-primary'
-                  }`}
-                >
-                  {user.is_admin ? 'Admin' : 'User'}
-                </button>
-                <button
-                  onClick={() => toggle(user, 'is_active')}
-                  className={`text-xs px-2 py-1 rounded font-medium transition-colors ${
-                    user.is_active
-                      ? 'bg-green-100 text-green-700 hover:bg-red-100 hover:text-red-700 dark:bg-green-900/30 dark:text-green-400'
-                      : 'bg-red-100 text-red-700 hover:bg-green-100 hover:text-green-700 dark:bg-red-900/30 dark:text-red-400'
-                  }`}
-                >
-                  {user.is_active ? 'Active' : 'Disabled'}
-                </button>
-              </div>
-            </div>
-          ))}
+          {users?.map((user) => <UserRow key={user.id} user={user} />)}
         </div>
       )}
     </section>
@@ -79,7 +160,9 @@ function InviteSection() {
 
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [sendPages, setSendPages] = useState<PageKey[]>([...ALL_PAGES]);
   const [codeOnly, setCodeOnly] = useState('');
+  const [codePages, setCodePages] = useState<PageKey[]>([...ALL_PAGES]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState<number | null>(null);
@@ -90,9 +173,10 @@ function InviteSection() {
     setBusy(true);
     setError('');
     try {
-      await sendInvite.mutateAsync({ email, name });
+      await sendInvite.mutateAsync({ email, name, page_access: pageAccessToString(sendPages) });
       setEmail('');
       setName('');
+      setSendPages([...ALL_PAGES]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send invitation');
     } finally {
@@ -105,8 +189,9 @@ function InviteSection() {
     setBusy(true);
     setError('');
     try {
-      await create.mutateAsync({ email: codeOnly || undefined });
+      await create.mutateAsync({ email: codeOnly || undefined, page_access: pageAccessToString(codePages) });
       setCodeOnly('');
+      setCodePages([...ALL_PAGES]);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to create invite code');
     } finally {
@@ -144,6 +229,7 @@ function InviteSection() {
               placeholder="Email address"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            <PageAccessPicker value={sendPages} onChange={setSendPages} />
             <button
               type="submit"
               disabled={busy || !email || !name}
@@ -165,6 +251,7 @@ function InviteSection() {
               placeholder="Email (optional)"
               className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
+            <PageAccessPicker value={codePages} onChange={setCodePages} />
             <button
               type="submit"
               disabled={busy}
@@ -191,13 +278,16 @@ function InviteSection() {
               <code className="flex-1 text-sm font-mono text-foreground bg-muted rounded px-2 py-1 truncate">
                 {code.code}
               </code>
-              <div className="text-xs text-muted-foreground flex-shrink-0">
-                {code.used_by_id ? (
-                  <span className="text-muted-foreground">Used</span>
-                ) : (
-                  <span className="text-green-600 dark:text-green-400">Available</span>
-                )}
-                {code.email && <span className="ml-2">{code.email}</span>}
+              <div className="text-xs text-muted-foreground flex-shrink-0 space-y-0.5">
+                <div>
+                  {code.used_by_id ? (
+                    <span className="text-muted-foreground">Used</span>
+                  ) : (
+                    <span className="text-green-600 dark:text-green-400">Available</span>
+                  )}
+                  {code.email && <span className="ml-2">{code.email}</span>}
+                </div>
+                <div>{code.page_access ? code.page_access.split(',').map((p) => PAGE_LABELS[p.trim() as PageKey] ?? p).join(', ') : 'All pages'}</div>
               </div>
               <button onClick={() => copyCode(code.id, code.code)} className="text-xs text-primary hover:underline flex-shrink-0">
                 {copied === code.id ? 'Copied!' : 'Copy'}

@@ -14,6 +14,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     is_admin = Column(Boolean, default=False)
     is_active = Column(Boolean, default=True)
+    page_access = Column(String, nullable=True)  # NULL = full access; else comma-separated page keys
     reset_token = Column(String, nullable=True)
     reset_token_expires = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -31,6 +32,7 @@ class InviteCode(Base):
     id = Column(Integer, primary_key=True, index=True)
     code = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, nullable=True)
+    page_access = Column(String, nullable=True)  # copied to user on registration
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     used_by_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     expires_at = Column(DateTime(timezone=True), nullable=True)

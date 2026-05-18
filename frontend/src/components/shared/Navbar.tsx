@@ -3,15 +3,16 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { cn } from '@/lib/utils/utils';
+import { usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
 
-const navLinks = [
+const navLinks: { to: string; label: string; page?: PageKey }[] = [
   { to: '/', label: 'Dashboard' },
-  { to: '/vignettes', label: 'Vignettes' },
-  { to: '/photos', label: 'Photos' },
-  { to: '/audio', label: 'Audio' },
-  { to: '/files', label: 'Files' },
-  { to: '/timeline', label: 'Timeline' },
-  { to: '/search', label: 'Search' },
+  { to: '/vignettes', label: 'Vignettes', page: 'vignettes' },
+  { to: '/photos', label: 'Photos', page: 'photos' },
+  { to: '/audio', label: 'Audio', page: 'audio' },
+  { to: '/files', label: 'Files', page: 'files' },
+  { to: '/timeline', label: 'Timeline', page: 'timeline' },
+  { to: '/search', label: 'Search', page: 'search' },
 ];
 
 export function Navbar() {
@@ -19,7 +20,9 @@ export function Navbar() {
   const { theme, setTheme } = useThemeStore();
   const location = useLocation();
   const navigate = useNavigate();
+  const canAccess = usePageAccess();
   const [menuOpen, setMenuOpen] = useState(false);
+  const visibleLinks = navLinks.filter((l) => !l.page || canAccess(l.page));
 
   function handleLogout() {
     logout();
@@ -47,7 +50,7 @@ export function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-0.5 overflow-x-auto">
-            {navLinks.map((link) => (
+            {visibleLinks.map((link) => (
               <Link
                 key={link.to}
                 to={link.to}
@@ -104,7 +107,7 @@ export function Navbar() {
       {/* Mobile menu */}
       {menuOpen && (
         <div className="lg:hidden border-t border-border bg-background px-4 py-3 space-y-1">
-          {navLinks.map((link) => (
+          {visibleLinks.map((link) => (
             <Link
               key={link.to}
               to={link.to}
