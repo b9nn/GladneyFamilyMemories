@@ -93,6 +93,7 @@ class Album(Base):
     created_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     sort_order = Column(Integer, default=0)
     background_image = Column(String, nullable=True)
+    is_wedding = Column(Boolean, default=False, server_default='false')
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     created_by = relationship("User")

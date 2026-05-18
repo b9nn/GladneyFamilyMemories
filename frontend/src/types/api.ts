@@ -18,7 +18,7 @@ export interface VignetteUpdate { title?: string; content?: string; sort_order?:
 export interface Photo { id: number; filename: string; file_path: string; url: string | null; thumb_url: string | null; medium_url: string | null; title: string | null; description: string | null; uploaded_by_id: number; taken_at: string | null; sort_order: number; created_at: string }
 export interface PhotoUpdate { title?: string; description?: string; taken_at?: string }
 
-export interface Album { id: number; name: string; description: string | null; created_by_id: number; sort_order: number; background_image: string | null; created_at: string; photo_count: number }
+export interface Album { id: number; name: string; description: string | null; created_by_id: number; sort_order: number; background_image: string | null; is_wedding: boolean; created_at: string; photo_count: number }
 export interface AlbumCreate { name: string; description?: string }
 export interface AlbumUpdate { name?: string; description?: string; sort_order?: number }
 

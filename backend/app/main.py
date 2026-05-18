@@ -504,7 +504,7 @@ def delete_photo(pid: int, db: Session = Depends(get_db), _: models.User = Depen
 
 @app.get("/api/albums", response_model=List[AlbumResponse])
 def list_albums(db: Session = Depends(get_db), _: models.User = Depends(require_page("photos"))):
-    albums = db.query(models.Album).order_by(models.Album.sort_order, models.Album.created_at.desc()).all()
+    albums = db.query(models.Album).filter(models.Album.is_wedding == False).order_by(models.Album.sort_order, models.Album.created_at.desc()).all()  # noqa: E712
     result = []
     for a in albums:
         d = AlbumResponse.model_validate(a)
@@ -622,6 +622,65 @@ def remove_from_album(aid: int, pid: int, db: Session = Depends(get_db), _: mode
         db.delete(ap)
         db.commit()
     return {"message": "Removed"}
+
+
+# ── Wedding ───────────────────────────────────────────────────────────────────
+
+@app.get("/api/wedding/photos", response_model=List[PhotoResponse])
+def get_wedding_photos(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
+    if not album:
+        return []
+    sorted_aps = sorted(album.album_photos, key=lambda ap: (ap.sort_order, ap.id))
+    result = []
+    for ap in sorted_aps:
+        d = PhotoResponse.model_validate(ap.photo)
+        d.url = get_file_url(ap.photo.file_path)
+        d.thumb_url = get_variant_url(ap.photo.file_path, "thumb")
+        d.medium_url = get_variant_url(ap.photo.file_path, "med")
+        result.append(d)
+    return result
+
+
+@app.post("/api/wedding/photos", response_model=PhotoResponse)
+async def upload_wedding_photo(
+    file: UploadFile = F(...),
+    title: Optional[str] = Form(None),
+    db: Session = Depends(get_db),
+    cu: models.User = Depends(get_current_admin_user),
+):
+    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
+    if not album:
+        album = models.Album(name="Megan/Hongyu Wedding", is_wedding=True, created_by_id=cu.id)
+        db.add(album)
+        db.commit()
+        db.refresh(album)
+    content = await file.read()
+    key, url = upload_file(content, file.filename or "photo", "photos", file.content_type, convert_heic=True)
+    photo = models.Photo(filename=file.filename or "photo", file_path=key, title=title, uploaded_by_id=cu.id)
+    db.add(photo)
+    db.commit()
+    db.refresh(photo)
+    max_order = max((ap.sort_order for ap in album.album_photos), default=-1) + 1
+    ap = models.AlbumPhoto(album_id=album.id, photo_id=photo.id, sort_order=max_order)
+    db.add(ap)
+    db.commit()
+    result = PhotoResponse.model_validate(photo)
+    result.url = url
+    result.thumb_url = get_variant_url(key, "thumb")
+    result.medium_url = get_variant_url(key, "med")
+    return result
+
+
+@app.delete("/api/wedding/photos/{pid}")
+def delete_wedding_photo(pid: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    p = db.query(models.Photo).filter(models.Photo.id == pid).first()
+    if not p:
+        raise HTTPException(404, "Not found")
+    delete_file(p.file_path)
+    db.delete(p)
+    db.commit()
+    return {"message": "Deleted"}
 
 
 # ── Audio ─────────────────────────────────────────────────────────────────────

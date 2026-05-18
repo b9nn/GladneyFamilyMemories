@@ -23,6 +23,7 @@ const FilesPage = lazy(() => import('@/features/files/FilesPage').then(m => ({ d
 const TimelinePage = lazy(() => import('@/features/timeline/TimelinePage').then(m => ({ default: m.TimelinePage })));
 const SearchPage = lazy(() => import('@/features/search/SearchPage').then(m => ({ default: m.SearchPage })));
 const AdminPage = lazy(() => import('@/features/admin/AdminPage').then(m => ({ default: m.AdminPage })));
+const WeddingPage = lazy(() => import('@/features/wedding/WeddingPage').then(m => ({ default: m.WeddingPage })));
 
 function PageSkeleton() {
   return (
@@ -66,6 +67,7 @@ const router = createBrowserRouter([
       { path: 'files', element: <PageGuard page="files"><Suspense fallback={<PageSkeleton />}><FilesPage /></Suspense></PageGuard> },
       { path: 'timeline', element: <PageGuard page="timeline"><Suspense fallback={<PageSkeleton />}><TimelinePage /></Suspense></PageGuard> },
       { path: 'search', element: <PageGuard page="search"><Suspense fallback={<PageSkeleton />}><SearchPage /></Suspense></PageGuard> },
+      { path: 'wedding', element: <Suspense fallback={<PageSkeleton />}><WeddingPage /></Suspense> },
       { path: 'settings/password', element: <Suspense fallback={<PageSkeleton />}><ChangePasswordPage /></Suspense> },
       {
         path: 'admin',
