@@ -4,11 +4,10 @@ import { EmptyState } from '@/components/shared/EmptyState';
 import { PhotoGrid } from '@/features/photos/components/PhotoGrid';
 import { PhotoUpload } from '@/features/photos/components/PhotoUpload';
 import { AlbumGrid } from '@/features/photos/components/AlbumGrid';
-import { AlbumView } from '@/features/photos/components/AlbumView';
 import {
   useWeddingPhotos, useUploadWeddingPhoto, useUpdateWeddingPhoto, useDeleteWeddingPhoto,
   useWeddingAlbums, useCreateWeddingAlbum, useUpdateWeddingAlbum, useDeleteWeddingAlbum,
-  useAddPhotoToWeddingAlbum, useReorderWeddingAlbums, useWeddingAlbumPhotos,
+  useAddPhotoToWeddingAlbum, useRemovePhotoFromWeddingAlbum, useReorderWeddingAlbums, useWeddingAlbumPhotos,
   useSetWeddingAlbumCover, useReorderWeddingAlbumPhotos,
 } from './hooks/useWedding';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
