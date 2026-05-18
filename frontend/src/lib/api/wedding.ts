@@ -1,6 +1,10 @@
 import { client } from './client'
-import type { Photo } from '@/types/api'
+import type { Album, Photo } from '@/types/api'
+
 export const weddingApi = {
+  getAlbum: () => client.get<Album>('/api/wedding/album').then(r => r.data),
+  upsertAlbum: (name: string, description?: string) =>
+    client.put<Album>('/api/wedding/album', { name, description }).then(r => r.data),
   listPhotos: () => client.get<Photo[]>('/api/wedding/photos').then(r => r.data),
   upload: (file: File, title?: string) => {
     const form = new FormData()

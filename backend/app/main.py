@@ -641,6 +641,33 @@ def remove_from_album(aid: int, pid: int, db: Session = Depends(get_db), _: mode
 
 # ── Wedding ───────────────────────────────────────────────────────────────────
 
+@app.get("/api/wedding/album", response_model=AlbumResponse)
+def get_wedding_album(db: Session = Depends(get_db), _: models.User = Depends(require_page("wedding"))):
+    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
+    if not album:
+        raise HTTPException(404, "No wedding album yet")
+    result = AlbumResponse.model_validate(album)
+    result.photo_count = len(album.album_photos)
+    return result
+
+
+@app.put("/api/wedding/album", response_model=AlbumResponse)
+def upsert_wedding_album(payload: AlbumCreate, db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
+    album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712
+    if album:
+        album.name = payload.name
+        if payload.description is not None:
+            album.description = payload.description
+    else:
+        album = models.Album(name=payload.name, description=payload.description, is_wedding=True, created_by_id=cu.id)
+        db.add(album)
+    db.commit()
+    db.refresh(album)
+    result = AlbumResponse.model_validate(album)
+    result.photo_count = len(album.album_photos)
+    return result
+
+
 @app.get("/api/wedding/photos", response_model=List[PhotoResponse])
 def get_wedding_photos(db: Session = Depends(get_db), _: models.User = Depends(require_page("wedding"))):
     album = db.query(models.Album).filter(models.Album.is_wedding == True).first()  # noqa: E712

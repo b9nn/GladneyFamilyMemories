@@ -1,19 +1,39 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PageHeader } from '@/components/shared/PageHeader';
 import { PhotoGrid } from '@/features/photos/components/PhotoGrid';
-import { useWeddingPhotos, useUploadWeddingPhoto, useDeleteWeddingPhoto, useReorderWeddingPhotos } from './hooks/useWedding';
+import {
+  useWeddingAlbum, useUpsertWeddingAlbum,
+  useWeddingPhotos, useUploadWeddingPhoto, useDeleteWeddingPhoto, useReorderWeddingPhotos,
+} from './hooks/useWedding';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { Photo } from '@/types/api';
 
 export function WeddingPage() {
-  const { data: photos, isLoading } = useWeddingPhotos();
+  const { data: album, isLoading: albumLoading, isError: albumError, refetch: refetchAlbum } = useWeddingAlbum();
+  const { data: photos, isLoading: photosLoading, isError: photosError, refetch: refetchPhotos } = useWeddingPhotos();
+  const upsertAlbum = useUpsertWeddingAlbum();
   const uploadPhoto = useUploadWeddingPhoto();
   const deletePhoto = useDeleteWeddingPhoto();
   const reorderPhotos = useReorderWeddingPhotos();
   const isAdmin = useIsAdmin();
 
   const [showUpload, setShowUpload] = useState(false);
+  const [editingAlbum, setEditingAlbum] = useState(false);
+  const [albumName, setAlbumName] = useState('');
+  const [albumDesc, setAlbumDesc] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  function openAlbumEditor() {
+    setAlbumName(album?.name ?? 'Megan/Hongyu Wedding');
+    setAlbumDesc(album?.description ?? '');
+    setEditingAlbum(true);
+  }
+
+  async function saveAlbum(e: React.FormEvent) {
+    e.preventDefault();
+    if (!albumName.trim()) return;
+    await upsertAlbum.mutateAsync({ name: albumName.trim(), description: albumDesc.trim() || undefined });
+    setEditingAlbum(false);
+  }
 
   function handleDelete(id: number) {
     if (!confirm('Delete this photo?')) return;
@@ -24,21 +44,101 @@ export function WeddingPage() {
     reorderPhotos.mutate(orderedIds.map((id, i) => ({ photo_id: id, sort_order: i })));
   }
 
+  const isLoading = albumLoading || photosLoading;
+
   return (
     <div>
-      <PageHeader
-        title="Megan & Hongyu Wedding"
-        description="Wedding photos"
-        action={isAdmin ? (
-          <button
-            onClick={() => setShowUpload((v) => !v)}
-            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
-          >
-            {showUpload ? 'Cancel' : 'Upload photos'}
-          </button>
-        ) : undefined}
-      />
+      {/* ── Album header ─────────────────────────────────────────────────── */}
+      <div className="mb-6">
+        {albumLoading ? (
+          <div className="h-8 w-64 bg-muted rounded animate-pulse mb-2" />
+        ) : editingAlbum ? (
+          <form onSubmit={saveAlbum} className="rounded-lg border border-border bg-card p-4 space-y-3 max-w-lg">
+            <p className="text-sm font-semibold text-foreground">Album settings</p>
+            <input
+              type="text"
+              value={albumName}
+              onChange={(e) => setAlbumName(e.target.value)}
+              placeholder="Album name"
+              autoFocus
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <textarea
+              value={albumDesc}
+              onChange={(e) => setAlbumDesc(e.target.value)}
+              placeholder="Description (optional)"
+              rows={2}
+              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+            />
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={!albumName.trim() || upsertAlbum.isPending}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
+              >
+                {upsertAlbum.isPending ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditingAlbum(false)}
+                className="rounded-md border border-input px-4 py-2 text-sm font-medium text-foreground hover:bg-accent"
+              >
+                Cancel
+              </button>
+            </div>
+          </form>
+        ) : album ? (
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">{album.name}</h1>
+              {album.description && (
+                <p className="mt-1 text-sm text-muted-foreground">{album.description}</p>
+              )}
+              <p className="mt-1 text-xs text-muted-foreground">
+                {album.photo_count} {album.photo_count === 1 ? 'photo' : 'photos'}
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={openAlbumEditor}
+                    className="rounded-md border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+                  >
+                    Edit album
+                  </button>
+                  <button
+                    onClick={() => setShowUpload((v) => !v)}
+                    className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
+                  >
+                    {showUpload ? 'Cancel' : 'Upload photos'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : albumError ? (
+          /* No album yet — admin sees setup button, guests see nothing */
+          isAdmin ? (
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Wedding Photos</h1>
+                <p className="mt-1 text-sm text-muted-foreground">No album set up yet.</p>
+              </div>
+              <button
+                onClick={openAlbumEditor}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 flex-shrink-0"
+              >
+                Set up album
+              </button>
+            </div>
+          ) : (
+            <h1 className="text-2xl font-bold text-foreground">Wedding Photos</h1>
+          )
+        ) : null}
+      </div>
 
+      {/* ── Upload panel ─────────────────────────────────────────────────── */}
       {showUpload && isAdmin && (
         <div className="mb-8 rounded-lg border border-border bg-card p-6">
           <h2 className="text-base font-semibold text-foreground mb-4">Upload wedding photos</h2>
@@ -46,14 +146,27 @@ export function WeddingPage() {
         </div>
       )}
 
+      {/* ── Photos ───────────────────────────────────────────────────────── */}
       {isLoading ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="aspect-square rounded-lg bg-muted animate-pulse" />
           ))}
         </div>
+      ) : photosError ? (
+        <div className="flex flex-col items-center gap-3 py-16 text-center">
+          <p className="text-sm text-muted-foreground">Could not load photos.</p>
+          <button
+            onClick={() => { refetchAlbum(); refetchPhotos(); }}
+            className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
+          >
+            Retry
+          </button>
+        </div>
       ) : !photos?.length ? (
-        <div className="py-16 text-center text-sm text-muted-foreground">No photos yet.</div>
+        <div className="py-16 text-center text-sm text-muted-foreground">
+          {isAdmin ? 'No photos yet. Use "Upload photos" to add some.' : 'No photos yet.'}
+        </div>
       ) : isAdmin ? (
         <PhotoGrid
           photos={photos}
@@ -87,7 +200,7 @@ export function WeddingPage() {
   );
 }
 
-// ── Guest photo card (non-admin, large grid with download) ────────────────────
+// ── Guest photo card ──────────────────────────────────────────────────────────
 
 function GuestPhotoCard({ photo, onClick }: { photo: Photo; onClick: () => void }) {
   function handleDownload(e: React.MouseEvent) {
