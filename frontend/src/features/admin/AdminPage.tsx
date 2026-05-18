@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { PageHeader } from '@/components/shared/PageHeader';
 import {
-  useAdminUsers, useUpdateUser, useInviteCodes, useCreateInviteCode,
+  useAdminUsers, useUpdateUser, useDeleteUser, useInviteCodes, useCreateInviteCode,
   useDeleteInviteCode, useSendInvite, useUploadBackground,
   useSmtpConfig, useUpdateSmtpConfig, useTestSmtpConfig,
 } from './hooks/useAdmin';
@@ -47,6 +47,7 @@ function PageAccessPicker({ value, onChange }: { value: PageKey[]; onChange: (pa
 
 function UserRow({ user }: { user: User }) {
   const updateUser = useUpdateUser();
+  const deleteUser = useDeleteUser();
   const [editingAccess, setEditingAccess] = useState(false);
   const [pages, setPages] = useState<PageKey[]>(stringToPageAccess(user.page_access));
 
@@ -105,6 +106,16 @@ function UserRow({ user }: { user: User }) {
               Pages
             </button>
           )}
+          <button
+            onClick={() => {
+              if (!confirm(`Permanently delete ${user.username}? Their content will be reassigned to you. This cannot be undone.`)) return;
+              deleteUser.mutate(user.id);
+            }}
+            disabled={deleteUser.isPending}
+            className="text-xs px-2 py-1 rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors disabled:opacity-50"
+          >
+            Delete
+          </button>
         </div>
       </div>
       {!user.is_admin && (

@@ -206,11 +206,23 @@ def admin_update_user(user_id: int, payload: UserAdminUpdate, db: Session = Depe
 @app.delete("/api/admin/users/{user_id}", status_code=204)
 def admin_delete_user(user_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(get_current_admin_user)):
     if current_user.id == user_id:
-        raise HTTPException(400, "Cannot remove your own account")
+        raise HTTPException(400, "Cannot delete your own account")
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(404, "User not found")
-    user.is_active = False
+    aid = current_user.id
+    # Reassign all content to the deleting admin so nothing is lost
+    db.query(models.Vignette).filter(models.Vignette.author_id == user_id).update({"author_id": aid})
+    db.query(models.Photo).filter(models.Photo.uploaded_by_id == user_id).update({"uploaded_by_id": aid})
+    db.query(models.Album).filter(models.Album.created_by_id == user_id).update({"created_by_id": aid})
+    db.query(models.AudioRecording).filter(models.AudioRecording.author_id == user_id).update({"author_id": aid})
+    db.query(models.File).filter(models.File.uploaded_by_id == user_id).update({"uploaded_by_id": aid})
+    db.query(models.BackgroundImage).filter(models.BackgroundImage.uploaded_by_id == user_id).update({"uploaded_by_id": aid})
+    db.query(models.FamilyMember).filter(models.FamilyMember.created_by_id == user_id).update({"created_by_id": aid})
+    # Invite codes: nullify used_by link; delete codes the user created
+    db.query(models.InviteCode).filter(models.InviteCode.used_by_id == user_id).update({"used_by_id": None})
+    db.query(models.InviteCode).filter(models.InviteCode.created_by_id == user_id).delete()
+    db.delete(user)
     db.commit()
 
 
