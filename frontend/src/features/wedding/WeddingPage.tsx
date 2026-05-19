@@ -279,28 +279,29 @@ function WeddingAlbumView({ album, allPhotos, onBack, onLightbox }: WeddingAlbum
 
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
+      <div className="mb-6 space-y-3">
         <button
           onClick={onBack}
           className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
         >
           ← All albums
         </button>
-        <span className="text-muted-foreground">/</span>
-        <h2 className="text-lg font-semibold text-foreground">{album.name}</h2>
-        <span className="text-sm text-muted-foreground ml-1">
-          ({album.photo_count} {album.photo_count === 1 ? 'photo' : 'photos'})
-        </span>
-        {isAdmin && (
-          <div className="ml-auto">
+        <div className="flex items-center justify-between gap-3 min-w-0">
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 className="text-lg font-semibold text-foreground truncate">{album.name}</h2>
+            <span className="text-sm text-muted-foreground flex-shrink-0">
+              ({album.photo_count} {album.photo_count === 1 ? 'photo' : 'photos'})
+            </span>
+          </div>
+          {isAdmin && (
             <button
               onClick={() => setShowAddPanel((v) => !v)}
-              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors flex-shrink-0"
             >
               {showAddPanel ? 'Done adding' : 'Add photos'}
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {showAddPanel && (
