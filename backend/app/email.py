@@ -69,9 +69,9 @@ def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | Non
     html = f"""
     <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
       <p>Hi {to_name},</p>
-      <p>This is your invitation to 'Lorna and Tom's Memories' website.</p>
-      <p>We have included vignettes of our memories, some photos, and a few interesting historical files.</p>
-      <p>At some point you might be interested to know more about us, we hope!</p>
+      <p>Welcome to Lorna and Tom's Memories website.</p>
+      <p>For the moment, we have uploaded the photos we have for Megan and Nemo's fantastic wedding celebration.</p>
+      <p>If you have photos you took that we can add, please text or email them to us.</p>
       <p style="margin:24px 0;">
         <a href="{link}" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Accept Invitation</a>
       </p>
