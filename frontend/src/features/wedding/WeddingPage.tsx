@@ -415,6 +415,7 @@ function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
             src={photo.url ?? ''}
             controls
             autoPlay
+            playsInline
             className="max-w-full max-h-[80vh] rounded-lg"
           />
         ) : (
