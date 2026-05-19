@@ -282,9 +282,9 @@ function WeddingAlbumView({ album, allPhotos, onBack, onLightbox }: WeddingAlbum
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={onBack}
-          className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
         >
-          ← Wedding
+          ← All albums
         </button>
         <span className="text-muted-foreground">/</span>
         <h2 className="text-lg font-semibold text-foreground">{album.name}</h2>
