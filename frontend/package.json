@@ -39,6 +39,7 @@
     "react-router-dom": "^6.30.3",
     "relatives-tree": "^3.2.2",
     "tailwind-merge": "^3.5.0",
+    "tslib": "^2.8.1",
     "zustand": "^5.0.12"
   },
   "devDependencies": {
