@@ -2,7 +2,13 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { Layout } from './Layout';
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute';
-import { usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
+import { usePageAccess, useIsWeddingOnly, type PageKey } from '@/lib/utils/usePageAccess';
+
+function HomeRedirect() {
+  const isWeddingOnly = useIsWeddingOnly();
+  if (isWeddingOnly) return <Navigate to="/wedding" replace />;
+  return <Suspense fallback={<PageSkeleton />}><DashboardPage /></Suspense>;
+}
 
 function PageGuard({ page, children }: { page: PageKey; children: React.ReactNode }) {
   const canAccess = usePageAccess();
@@ -60,7 +66,7 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <Suspense fallback={<PageSkeleton />}><DashboardPage /></Suspense> },
+      { index: true, element: <HomeRedirect /> },
       { path: 'vignettes', element: <PageGuard page="vignettes"><Suspense fallback={<PageSkeleton />}><VignettesPage /></Suspense></PageGuard> },
       { path: 'photos', element: <PageGuard page="photos"><Suspense fallback={<PageSkeleton />}><PhotosPage /></Suspense></PageGuard> },
       { path: 'audio', element: <PageGuard page="audio"><Suspense fallback={<PageSkeleton />}><AudioPage /></Suspense></PageGuard> },

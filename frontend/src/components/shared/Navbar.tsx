@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { cn } from '@/lib/utils/utils';
-import { usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
+import { usePageAccess, useIsWeddingOnly, type PageKey } from '@/lib/utils/usePageAccess';
 
 const navLinks: { to: string; label: string; page?: PageKey }[] = [
   { to: '/', label: 'Dashboard' },
@@ -22,8 +22,12 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const canAccess = usePageAccess();
+  const isWeddingOnly = useIsWeddingOnly();
   const [menuOpen, setMenuOpen] = useState(false);
-  const visibleLinks = navLinks.filter((l) => !l.page || canAccess(l.page));
+  const visibleLinks = navLinks.filter((l) => {
+    if (l.to === '/' && isWeddingOnly) return false;
+    return !l.page || canAccess(l.page);
+  });
 
   function handleLogout() {
     logout();

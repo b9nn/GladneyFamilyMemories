@@ -16,6 +16,13 @@ export function usePageAccess() {
   return canAccess;
 }
 
+export function useIsWeddingOnly(): boolean {
+  const user = useAuthStore((s) => s.user);
+  if (!user || user.is_admin || user.page_access == null) return false;
+  const pages = stringToPageAccess(user.page_access);
+  return pages.length === 1 && pages[0] === 'wedding';
+}
+
 export function pageAccessToString(pages: PageKey[]): string | null {
   if (pages.length === ALL_PAGES.length) return null; // null = full access
   return pages.join(',') || null;
