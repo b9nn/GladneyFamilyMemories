@@ -279,24 +279,24 @@ function WeddingAlbumView({ album, allPhotos, onBack, onLightbox }: WeddingAlbum
 
   return (
     <div>
-      <div className="mb-6 space-y-3">
-        <button
-          onClick={onBack}
-          className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors"
-        >
-          ← All albums
-        </button>
+      <div className="sticky top-14 z-30 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-3 mb-6 bg-background/95 backdrop-blur-sm border-b border-border">
         <div className="flex items-center justify-between gap-3 min-w-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <h2 className="text-lg font-semibold text-foreground truncate">{album.name}</h2>
-            <span className="text-sm text-muted-foreground flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <button
+              onClick={onBack}
+              className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground bg-background hover:bg-accent transition-colors flex-shrink-0"
+            >
+              ← All albums
+            </button>
+            <h2 className="text-base font-semibold text-foreground truncate">{album.name}</h2>
+            <span className="text-sm text-muted-foreground flex-shrink-0 hidden sm:inline">
               ({album.photo_count} {album.photo_count === 1 ? 'photo' : 'photos'})
             </span>
           </div>
           {isAdmin && (
             <button
               onClick={() => setShowAddPanel((v) => !v)}
-              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent transition-colors flex-shrink-0"
+              className="rounded-md border border-border px-3 py-1.5 text-sm font-medium text-foreground bg-background hover:bg-accent transition-colors flex-shrink-0"
             >
               {showAddPanel ? 'Done adding' : 'Add photos'}
             </button>
