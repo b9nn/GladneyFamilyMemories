@@ -438,8 +438,10 @@ function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
       {hasNext && (
         <button onClick={(e) => { e.stopPropagation(); next(); }} className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 text-white w-10 h-10 flex items-center justify-center hover:bg-black/90 text-xl z-10">›</button>
       )}
-      <button onClick={onClose} className="absolute top-4 right-4 rounded-full bg-black/60 text-white w-9 h-9 flex items-center justify-center hover:bg-black/90 text-sm z-10">✕</button>
-      <button onClick={(e) => { e.stopPropagation(); handleDownload(); }} title="Download" className="absolute top-4 right-16 rounded-full bg-black/60 text-white w-9 h-9 flex items-center justify-center hover:bg-black/90 text-sm z-10">↓</button>
+      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+        <button onClick={(e) => { e.stopPropagation(); handleDownload(); }} title="Download" className="rounded-full bg-black/60 border border-white/20 text-white w-10 h-10 flex items-center justify-center hover:bg-black/90 text-sm">↓</button>
+        <button onClick={onClose} className="inline-flex items-center gap-1.5 rounded-full bg-white/90 text-black px-4 py-2 text-sm font-semibold hover:bg-white transition-colors">✕ Close</button>
+      </div>
     </div>
   );
 }
