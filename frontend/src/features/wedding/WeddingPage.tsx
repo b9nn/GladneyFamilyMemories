@@ -415,8 +415,8 @@ function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
           <video
             src={photo.url ?? ''}
             controls
-            autoPlay
             playsInline
+            preload="metadata"
             className="max-w-full max-h-[80vh] rounded-lg"
           />
         ) : (
