@@ -354,7 +354,7 @@ def test_smtp_config(db: Session = Depends(get_db), cu: models.User = Depends(ge
 def dashboard_stats(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     return {
         "vignettes": db.query(models.Vignette).count(),
-        "photos": db.query(models.Photo).count(),
+        "photos": db.query(models.Photo).filter(models.Photo.source != 'wedding').count(),
         "audio_recordings": db.query(models.AudioRecording).count(),
         "files": db.query(models.File).filter(models.File.source == "files").count(),
         "family_members": db.query(models.FamilyMember).count(),
