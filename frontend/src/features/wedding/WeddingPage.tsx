@@ -113,7 +113,7 @@ export function WeddingPage() {
 
       {/* Video playback notice */}
       <div className="mb-6 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
-        Video clips included on this page do <strong>NOT</strong> play on iPhone or iPad, but <strong>DO</strong> play on a desktop or laptop computer.
+        Video clips on this page <strong>WILL PLAY</strong> on a computer or laptop on <strong>SOME</strong> browsers, but not on an iPhone or iPad.
       </div>
 
       {/* New album form */}
