@@ -111,6 +111,11 @@ export function WeddingPage() {
         ) : undefined}
       />
 
+      {/* Video playback notice */}
+      <div className="mb-6 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950/30 dark:border-amber-700 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">
+        Video clips included on this page do <strong>NOT</strong> play on iPhone or iPad, but <strong>DO</strong> play on a desktop or laptop computer.
+      </div>
+
       {/* New album form */}
       {showNewAlbum && (
         <div className="mb-6 rounded-lg border border-border bg-card p-4">
