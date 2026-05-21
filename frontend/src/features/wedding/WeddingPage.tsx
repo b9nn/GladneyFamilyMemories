@@ -351,15 +351,23 @@ function WeddingAlbumView({ album, allPhotos, onBack, onLightbox }: WeddingAlbum
           <p className="text-sm text-muted-foreground mt-1">Click "Add photos" to add some.</p>
         </div>
       ) : (
-        <PhotoGrid
-          photos={albumPhotos}
-          isAdmin={isAdmin}
-          onDelete={(photoId) => removePhoto.mutate({ albumId: album.id, photoId })}
-          onSelect={(photo) => onLightbox(albumPhotos, photo)}
-          onSetCover={isAdmin ? (photo) => setCover.mutate({ albumId: album.id, photoId: photo.id }) : undefined}
-          deleteLabel="Remove"
-          onReorderPhotos={isAdmin ? (orderedIds) => reorderPhotos.mutate(orderedIds.map((id, i) => ({ photo_id: id, sort_order: i }))) : undefined}
-        />
+        <>
+          <PhotoGrid
+            photos={albumPhotos}
+            isAdmin={isAdmin}
+            onDelete={(photoId) => removePhoto.mutate({ albumId: album.id, photoId })}
+            onSelect={(photo) => onLightbox(albumPhotos, photo)}
+            onSetCover={isAdmin ? (photo) => setCover.mutate({ albumId: album.id, photoId: photo.id }) : undefined}
+            deleteLabel="Remove"
+            onReorderPhotos={isAdmin ? (orderedIds) => reorderPhotos.mutate(orderedIds.map((id, i) => ({ photo_id: id, sort_order: i }))) : undefined}
+          />
+          <button
+            onClick={onBack}
+            className="mt-8 w-full rounded-xl border-2 border-border bg-card py-6 text-base font-semibold text-foreground hover:bg-accent transition-colors"
+          >
+            ← Back to all albums
+          </button>
+        </>
       )}
     </div>
   );
