@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { GripVertical } from 'lucide-react';
 import { formatDate } from '@/lib/utils/date';
 import type { Album, Photo, PhotoUpdate } from '@/types/api';
@@ -349,62 +348,110 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
 
 // ── Grid ──────────────────────────────────────────────────────────────────────
 
-export function PhotoGrid({ photos, isAdmin = false, albums, onDelete, onSelect, onSetCover, onUpdate, onAddToAlbum, onPhotoDragStart, onPhotoDragEnd, deleteLabel = 'Delete', draggable = false, showDetails = false, onReorderPhotos }: PhotoGridProps) {
-  function handleReorderDragEnd(result: DropResult) {
-    if (!result.destination || result.destination.index === result.source.index) return;
-    const ids = photos.map(p => p.id);
-    const [moved] = ids.splice(result.source.index, 1);
-    ids.splice(result.destination.index, 0, moved);
-    onReorderPhotos?.(ids);
+function SortablePhotoGrid({ photos, isAdmin, onDelete, onSelect, onSetCover, onUpdate, deleteLabel, showDetails, onReorderPhotos }: {
+  photos: Photo[];
+  isAdmin: boolean;
+  onDelete: (id: number) => void;
+  onSelect?: (photo: Photo) => void;
+  onSetCover?: (photo: Photo) => void;
+  onUpdate?: (id: number, data: PhotoUpdate) => void;
+  deleteLabel: string;
+  showDetails: boolean;
+  onReorderPhotos: (ids: number[]) => void;
+}) {
+  const [items, setItemsState] = useState(() => photos.map(p => p.id));
+  const itemsRef = useRef(items);
+  const dragSrcId = useRef<number | null>(null);
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+
+  function setItems(updater: (prev: number[]) => number[]) {
+    setItemsState(prev => {
+      const next = updater(prev);
+      itemsRef.current = next;
+      return next;
+    });
   }
 
+  useEffect(() => {
+    const ids = photos.map(p => p.id);
+    itemsRef.current = ids;
+    setItemsState(ids);
+  }, [photos]);
+
+  function handleDragStart(id: number) {
+    dragSrcId.current = id;
+    setDraggingId(id);
+  }
+
+  function handleDragOver(e: React.DragEvent, targetId: number) {
+    e.preventDefault();
+    const src = dragSrcId.current;
+    if (!src || src === targetId) return;
+    setItems(prev => {
+      const from = prev.indexOf(src);
+      const to = prev.indexOf(targetId);
+      if (from === -1 || to === -1 || from === to) return prev;
+      const next = [...prev];
+      next.splice(from, 1);
+      next.splice(to, 0, src);
+      return next;
+    });
+  }
+
+  function handleDrop() {
+    if (dragSrcId.current !== null) onReorderPhotos(itemsRef.current);
+    dragSrcId.current = null;
+    setDraggingId(null);
+  }
+
+  const sorted = items.map(id => photos.find(p => p.id === id)).filter((p): p is Photo => p !== undefined);
+
+  return (
+    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+      {sorted.map(photo => (
+        <div
+          key={photo.id}
+          draggable
+          onDragStart={() => handleDragStart(photo.id)}
+          onDragOver={(e) => handleDragOver(e, photo.id)}
+          onDrop={handleDrop}
+          onDragEnd={handleDrop}
+          className={`relative ${draggingId === photo.id ? 'opacity-40 ring-2 ring-primary rounded-lg' : ''}`}
+        >
+          <PhotoCard
+            photo={photo}
+            isAdmin={isAdmin}
+            onDelete={onDelete}
+            onSelect={onSelect}
+            onSetCover={onSetCover}
+            onUpdate={onUpdate}
+            deleteLabel={deleteLabel}
+            draggable={false}
+            showDetails={showDetails}
+          />
+          <div className="absolute top-1 left-1 z-20 rounded bg-black/60 p-0.5 text-white/80 hover:text-white cursor-grab active:cursor-grabbing pointer-events-none">
+            <GripVertical size={12} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function PhotoGrid({ photos, isAdmin = false, albums, onDelete, onSelect, onSetCover, onUpdate, onAddToAlbum, onPhotoDragStart, onPhotoDragEnd, deleteLabel = 'Delete', draggable = false, showDetails = false, onReorderPhotos }: PhotoGridProps) {
   if (onReorderPhotos) {
     return (
-      <DragDropContext onDragEnd={handleReorderDragEnd}>
-        <Droppable droppableId="album-photos">
-          {(droppable) => (
-            <div
-              ref={droppable.innerRef}
-              {...droppable.droppableProps}
-              className="grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10"
-            >
-              {photos.map((photo, index) => (
-                <Draggable key={photo.id} draggableId={String(photo.id)} index={index}>
-                  {(provided, snapshot) => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.draggableProps}
-                      className={`relative ${snapshot.isDragging ? 'opacity-60 ring-2 ring-primary rounded-lg' : ''}`}
-                    >
-                      <PhotoCard
-                        photo={photo}
-                        isAdmin={isAdmin}
-                        albums={albums}
-                        onDelete={onDelete}
-                        onSelect={onSelect}
-                        onSetCover={onSetCover}
-                        onUpdate={onUpdate}
-                        onAddToAlbum={onAddToAlbum}
-                        deleteLabel={deleteLabel}
-                        draggable={false}
-                        showDetails={showDetails}
-                      />
-                      <div
-                        {...provided.dragHandleProps}
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute top-1 left-1 z-20 rounded bg-black/60 p-0.5 text-white/80 hover:text-white cursor-grab active:cursor-grabbing"
-                      >
-                        <GripVertical size={12} />
-                      </div>
-                    </div>
-                  )}
-                </Draggable>
-              ))}
-              {droppable.placeholder}
-            </div>
-          )}
-        </Droppable>
-      </DragDropContext>
+      <SortablePhotoGrid
+        photos={photos}
+        isAdmin={isAdmin}
+        onDelete={onDelete}
+        onSelect={onSelect}
+        onSetCover={onSetCover}
+        onUpdate={onUpdate}
+        deleteLabel={deleteLabel}
+        showDetails={showDetails}
+        onReorderPhotos={onReorderPhotos}
+      />
     );
   }
 
