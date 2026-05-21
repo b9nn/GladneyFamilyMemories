@@ -421,38 +421,40 @@ function Lightbox({ photos, index, onIndexChange, onClose }: LightboxProps) {
       {hasPrev && (
         <button onClick={(e) => { e.stopPropagation(); prev(); }} className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 text-white w-10 h-10 flex items-center justify-center hover:bg-black/90 text-xl z-10">‹</button>
       )}
-      <div className="relative max-w-5xl max-h-[90vh] px-16 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
-        {isVideo ? (
-          <video
-            src={photo.url ?? ''}
-            controls
-            playsInline
-            preload="metadata"
-            className="max-w-full max-h-[80vh] rounded-lg"
-          />
-        ) : (
-          <img
-            src={photo.medium_url ?? photo.url ?? ''}
-            onError={(e) => { const img = e.currentTarget; if (photo.url && img.src !== photo.url) img.src = photo.url; }}
-            alt={photo.title ?? photo.filename}
-            className="max-w-full max-h-[80vh] object-contain rounded-lg"
-          />
-        )}
-        {(photo.title || photo.description) && (
-          <div className="mt-3 text-center">
-            {photo.title && <p className="text-white text-sm font-medium">{photo.title}</p>}
-            {photo.description && <p className="text-white/70 text-xs mt-1">{photo.description}</p>}
-          </div>
-        )}
-        {photos.length > 1 && <p className="mt-2 text-white/40 text-xs">{index + 1} / {photos.length}</p>}
+      <div className="relative max-w-5xl px-16 flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+        <div className="relative">
+          {isVideo ? (
+            <video
+              src={photo.url ?? ''}
+              controls
+              playsInline
+              preload="metadata"
+              className="max-w-full max-h-[75vh] rounded-lg"
+            />
+          ) : (
+            <img
+              src={photo.medium_url ?? photo.url ?? ''}
+              onError={(e) => { const img = e.currentTarget; if (photo.url && img.src !== photo.url) img.src = photo.url; }}
+              alt={photo.title ?? photo.filename}
+              className="max-w-full max-h-[75vh] object-contain rounded-lg"
+            />
+          )}
+          {(photo.title || photo.description) && (
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-4 pt-8 pb-3 rounded-b-lg">
+              {photo.title && <p className="text-white text-sm font-medium">{photo.title}</p>}
+              {photo.description && <p className="text-white/70 text-xs mt-1">{photo.description}</p>}
+            </div>
+          )}
+        </div>
+        <div className="mt-3 flex items-center gap-4">
+          {photos.length > 1 && <p className="text-white/40 text-xs">{index + 1} / {photos.length}</p>}
+          <button onClick={onClose} className="inline-flex items-center gap-1.5 rounded-full bg-white/90 text-black px-4 py-2 text-sm font-semibold hover:bg-white transition-colors">✕ Close</button>
+          <button onClick={(e) => { e.stopPropagation(); handleDownload(); }} title="Download" className="rounded-full bg-black/60 border border-white/20 text-white w-8 h-8 flex items-center justify-center hover:bg-black/90 text-sm">↓</button>
+        </div>
       </div>
       {hasNext && (
         <button onClick={(e) => { e.stopPropagation(); next(); }} className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 text-white w-10 h-10 flex items-center justify-center hover:bg-black/90 text-xl z-10">›</button>
       )}
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-        <button onClick={(e) => { e.stopPropagation(); handleDownload(); }} title="Download" className="rounded-full bg-black/60 border border-white/20 text-white w-10 h-10 flex items-center justify-center hover:bg-black/90 text-sm">↓</button>
-        <button onClick={onClose} className="inline-flex items-center gap-1.5 rounded-full bg-white/90 text-black px-4 py-2 text-sm font-semibold hover:bg-white transition-colors">✕ Close</button>
-      </div>
     </div>
   );
 }

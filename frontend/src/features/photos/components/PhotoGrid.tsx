@@ -361,7 +361,7 @@ export function PhotoGrid({ photos, isAdmin = false, albums, onDelete, onSelect,
   if (onReorderPhotos) {
     return (
       <DragDropContext onDragEnd={handleReorderDragEnd}>
-        <Droppable droppableId="album-photos" direction="horizontal">
+        <Droppable droppableId="album-photos">
           {(droppable) => (
             <div
               ref={droppable.innerRef}
