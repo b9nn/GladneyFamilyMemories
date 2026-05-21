@@ -9,7 +9,7 @@ import type { InviteCode, User } from '@/types/api';
 import { useAdminUsers, useDeleteUser, useUpdateUser } from '@/features/admin/hooks/useAdmin';
 import { formatDate } from '@/lib/utils/date';
 import { useUploadBackground } from '@/features/admin/hooks/useAdmin';
-import { ALL_PAGES, pageAccessToString, stringToPageAccess, type PageKey } from '@/lib/utils/usePageAccess';
+import { ALL_PAGES, pageAccessToString, stringToPageAccess, usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
 
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
@@ -326,8 +326,17 @@ export function DashboardPage() {
   const { user } = useAuthStore();
   const { data: stats, isError: statsError } = useDashboardStats();
   const isAdmin = user?.is_admin ?? false;
+  const canAccess = usePageAccess();
 
   const greeting = user?.full_name ?? user?.username ?? 'there';
+
+  const statCards = [
+    { label: 'Vignettes', key: 'vignettes' as const, to: '/vignettes', page: 'vignettes' as PageKey },
+    { label: 'Photos', key: 'photos' as const, to: '/photos', page: 'photos' as PageKey },
+    { label: 'Audio', key: 'audio_recordings' as const, to: '/audio', page: 'audio' as PageKey },
+    { label: 'Files', key: 'files' as const, to: '/files', page: 'files' as PageKey },
+    { label: 'Wedding', key: 'wedding' as const, to: '/wedding', page: 'wedding' as PageKey },
+  ].filter(c => canAccess(c.page));
 
   return (
     <div>
@@ -339,16 +348,15 @@ export function DashboardPage() {
 
       {stats ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <StatCard label="Vignettes" value={stats.vignettes} to="/vignettes" />
-          <StatCard label="Photos" value={stats.photos} to="/photos" />
-          <StatCard label="Audio" value={stats.audio_recordings} to="/audio" />
-          <StatCard label="Files" value={stats.files} to="/files" />
+          {statCards.map(c => (
+            <StatCard key={c.key} label={c.label} value={stats[c.key] ?? 0} to={c.to} />
+          ))}
         </div>
       ) : statsError ? (
         <p className="text-sm text-muted-foreground">Could not load stats — refresh to try again.</p>
       ) : (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+          {Array.from({ length: statCards.length || 5 }).map((_, i) => (
             <div key={i} className="h-24 rounded-lg border border-border bg-muted animate-pulse" />
           ))}
         </div>
