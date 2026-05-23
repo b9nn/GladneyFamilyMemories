@@ -537,9 +537,11 @@ def list_albums(db: Session = Depends(get_db), _: models.User = Depends(require_
     for a in albums:
         d = AlbumResponse.model_validate(a)
         d.photo_count = len(a.album_photos)
-        if not d.background_image and a.album_photos:
+        cover_path = a.background_image if a.background_image and not a.background_image.startswith('http') else None
+        if not cover_path and a.album_photos:
             latest = max(a.album_photos, key=lambda ap: ap.added_at or ap.id)
-            d.background_image = get_file_url(latest.photo.file_path)
+            cover_path = latest.photo.file_path
+        d.background_image = get_file_url(cover_path) if cover_path else None
         result.append(d)
     return result
 
@@ -634,8 +636,7 @@ def set_album_cover(aid: int, pid: int, db: Session = Depends(get_db), _: models
     photo = db.query(models.Photo).filter(models.Photo.id == pid).first()
     if not photo:
         raise HTTPException(404, "Photo not found")
-    url = get_file_url(photo.file_path)
-    album.background_image = url
+    album.background_image = photo.file_path
     db.commit()
     db.refresh(album)
     result = AlbumResponse.model_validate(album)
@@ -661,9 +662,11 @@ def list_wedding_albums(db: Session = Depends(get_db), _: models.User = Depends(
     for a in albums:
         d = AlbumResponse.model_validate(a)
         d.photo_count = len(a.album_photos)
-        if not d.background_image and a.album_photos:
+        cover_path = a.background_image if a.background_image and not a.background_image.startswith('http') else None
+        if not cover_path and a.album_photos:
             latest = max(a.album_photos, key=lambda ap: ap.added_at or ap.id)
-            d.background_image = get_file_url(latest.photo.file_path)
+            cover_path = latest.photo.file_path
+        d.background_image = get_file_url(cover_path) if cover_path else None
         result.append(d)
     return result
 
