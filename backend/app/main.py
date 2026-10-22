@@ -1,7 +1,7 @@
 import io
 import os
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import List, Optional
 
@@ -131,7 +131,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     if user and user.is_active:
         token = secrets.token_urlsafe(32)
         user.reset_token = token
-        user.reset_token_expires = datetime.utcnow() + timedelta(hours=1)
+        user.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=1)
         db.commit()
         email_mod.send_password_reset_email(user.email, user.username, token, db)
     # Always return the same response — don't leak which emails are registered
@@ -143,7 +143,10 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
     if len(payload.new_password) < 8:
         raise HTTPException(400, "Password must be at least 8 characters")
     user = db.query(models.User).filter(models.User.reset_token == payload.token).first()
-    if not user or not user.reset_token_expires or user.reset_token_expires < datetime.utcnow():
+    expires = user.reset_token_expires if user else None
+    if expires is not None and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)  # SQLite returns naive datetimes
+    if not expires or expires < datetime.now(timezone.utc):
         raise HTTPException(400, "Invalid or expired reset link")
     user.hashed_password = hash_password(payload.new_password)
     user.reset_token = None
