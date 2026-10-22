@@ -191,6 +191,16 @@ def admin_update_user(user_id: int, payload: UserAdminUpdate, db: Session = Depe
         raise HTTPException(404, "User not found")
     update_data = payload.model_dump(exclude_unset=True)
     old_page_access = user.page_access
+    password = update_data.pop('password', None)
+    if password is not None:
+        if len(password) < 8:
+            raise HTTPException(400, "Password must be at least 8 characters")
+        user.hashed_password = hash_password(password)
+    if 'email' in update_data:
+        email = (update_data['email'] or '').strip() or None
+        if email and db.query(models.User).filter(models.User.email == email, models.User.id != user_id).first():
+            raise HTTPException(400, "That email is already used by another account")
+        update_data['email'] = email
     for field, val in update_data.items():
         setattr(user, field, val)
     db.commit()

@@ -308,6 +308,7 @@ class UserAdminUpdate(BaseModel):
     full_name: Optional[str] = None
     email: Optional[str] = None
     page_access: Optional[str] = None
+    password: Optional[str] = None
 
 class DashboardStats(BaseModel):
     vignettes: int

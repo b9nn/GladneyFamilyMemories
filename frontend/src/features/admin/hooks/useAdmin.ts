@@ -13,6 +13,7 @@ export function useUpdateUser() {
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: UserAdminUpdate }) => adminApi.updateUser(id, data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'users'] }); toast('User updated', 'success'); },
+    onError: (err) => toast(apiErrorMessage(err, 'Failed to update user'), 'error'),
   });
 }
 

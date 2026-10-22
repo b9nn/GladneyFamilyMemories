@@ -12,6 +12,7 @@ import { useFiles, useDeleteFile } from '@/features/files/hooks/useFiles';
 import { formatDate } from '@/lib/utils/date';
 import { ALL_PAGES, pageAccessToString, stringToPageAccess, type PageKey } from '@/lib/utils/usePageAccess';
 import type { User, Vignette, SmtpConfig, SmtpConfigResponse } from '@/types/api';
+import { UserLoginEditor } from './components/UserLoginEditor';
 
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
@@ -49,6 +50,7 @@ function UserRow({ user }: { user: User }) {
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
   const [editingAccess, setEditingAccess] = useState(false);
+  const [editingLogin, setEditingLogin] = useState(false);
   const [pages, setPages] = useState<PageKey[]>(stringToPageAccess(user.page_access));
 
   function toggle(field: 'is_active' | 'is_admin') {
@@ -100,12 +102,18 @@ function UserRow({ user }: { user: User }) {
           </button>
           {!user.is_admin && (
             <button
-              onClick={() => { setPages(stringToPageAccess(user.page_access)); setEditingAccess((v) => !v); }}
+              onClick={() => { setPages(stringToPageAccess(user.page_access)); setEditingLogin(false); setEditingAccess((v) => !v); }}
               className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground hover:text-foreground transition-colors"
             >
               Pages
             </button>
           )}
+          <button
+            onClick={() => { setEditingAccess(false); setEditingLogin((v) => !v); }}
+            className="text-xs px-2 py-1 rounded bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Login
+          </button>
           <button
             onClick={() => {
               if (!confirm(`Permanently delete ${user.username}? Their content will be reassigned to you. This cannot be undone.`)) return;
@@ -138,6 +146,7 @@ function UserRow({ user }: { user: User }) {
           </div>
         </div>
       )}
+      {editingLogin && <UserLoginEditor user={user} onDone={() => setEditingLogin(false)} />}
     </div>
   );
 }

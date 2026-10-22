@@ -41,7 +41,7 @@ export interface SearchResult { content_type: string; id: number; title: string;
 export interface TimelineItem { content_type: string; id: number; title: string; description: string | null; thumbnail_url: string | null; created_at: string }
 
 export interface DashboardStats { vignettes: number; photos: number; audio_recordings: number; files: number; family_members: number; wedding: number }
-export interface UserAdminUpdate { is_active?: boolean; is_admin?: boolean; full_name?: string; email?: string; page_access?: string | null }
+export interface UserAdminUpdate { is_active?: boolean; is_admin?: boolean; full_name?: string; email?: string; page_access?: string | null; password?: string }
 
 export interface SmtpConfig { smtp_host: string; smtp_port: number; smtp_user: string; smtp_password: string; from_email: string; from_name: string; admin_email: string; site_url: string }
 export interface SmtpConfigResponse { smtp_host: string; smtp_port: number; smtp_user: string; from_email: string; from_name: string; admin_email: string; site_url: string; configured: boolean }
