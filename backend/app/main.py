@@ -543,6 +543,21 @@ def delete_photo(pid: int, db: Session = Depends(get_db), _: models.User = Depen
 
 # ── Albums ────────────────────────────────────────────────────────────────────
 
+_VIDEO_EXTS = {'.mp4', '.mov', '.m4v', '.webm', '.avi'}
+
+def _album_cover_url(a: models.Album) -> Optional[str]:
+    cover_path = a.background_image if a.background_image and not a.background_image.startswith('http') else None
+    if not cover_path and a.album_photos:
+        latest = max(a.album_photos, key=lambda ap: ap.added_at or ap.id)
+        cover_path = latest.photo.file_path
+    if not cover_path:
+        return None
+    if Path(cover_path).suffix.lower() in _VIDEO_EXTS:
+        return get_file_url(cover_path)
+    # Covers render as small tiles; the full-size original can moiré/pixelate when the browser downscales it
+    return get_variant_url(cover_path, "med")
+
+
 @app.get("/api/albums", response_model=List[AlbumResponse])
 def list_albums(db: Session = Depends(get_db), _: models.User = Depends(require_page("photos"))):
     albums = db.query(models.Album).filter(models.Album.is_wedding == False).order_by(models.Album.sort_order, models.Album.created_at.desc()).all()  # noqa: E712
@@ -550,11 +565,7 @@ def list_albums(db: Session = Depends(get_db), _: models.User = Depends(require_
     for a in albums:
         d = AlbumResponse.model_validate(a)
         d.photo_count = len(a.album_photos)
-        cover_path = a.background_image if a.background_image and not a.background_image.startswith('http') else None
-        if not cover_path and a.album_photos:
-            latest = max(a.album_photos, key=lambda ap: ap.added_at or ap.id)
-            cover_path = latest.photo.file_path
-        d.background_image = get_file_url(cover_path) if cover_path else None
+        d.background_image = _album_cover_url(a)
         result.append(d)
     return result
 
@@ -675,11 +686,7 @@ def list_wedding_albums(db: Session = Depends(get_db), _: models.User = Depends(
     for a in albums:
         d = AlbumResponse.model_validate(a)
         d.photo_count = len(a.album_photos)
-        cover_path = a.background_image if a.background_image and not a.background_image.startswith('http') else None
-        if not cover_path and a.album_photos:
-            latest = max(a.album_photos, key=lambda ap: ap.added_at or ap.id)
-            cover_path = latest.photo.file_path
-        d.background_image = get_file_url(cover_path) if cover_path else None
+        d.background_image = _album_cover_url(a)
         result.append(d)
     return result
 
