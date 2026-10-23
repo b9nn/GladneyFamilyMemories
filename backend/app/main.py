@@ -361,6 +361,46 @@ def test_smtp_config(db: Session = Depends(get_db), cu: models.User = Depends(ge
     return {"message": f"Test email sent to {test_to}"}
 
 
+# ── Admin: Invitation Email Template ──────────────────────────────────────────
+
+def _invite_template_response(db: Session) -> InviteTemplate:
+    t = email_mod.get_invite_template(db)
+    return InviteTemplate(subject=t['invite_subject'], body=t['invite_body'], signoff=t['invite_signoff'])
+
+
+@app.get("/api/admin/invite-template", response_model=InviteTemplate)
+def get_invite_template(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    return _invite_template_response(db)
+
+
+@app.put("/api/admin/invite-template", response_model=InviteTemplate)
+def update_invite_template(payload: InviteTemplate, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    if not payload.subject.strip() or not payload.body.strip():
+        raise HTTPException(400, "Subject and message cannot be empty")
+    fields = {'invite_subject': payload.subject.strip(), 'invite_body': payload.body.strip(), 'invite_signoff': payload.signoff.strip()}
+    for key, value in fields.items():
+        setting = db.query(models.SiteSetting).filter(models.SiteSetting.key == key).first()
+        if setting:
+            setting.value = value
+        else:
+            db.add(models.SiteSetting(key=key, value=value))
+    db.commit()
+    return _invite_template_response(db)
+
+
+@app.post("/api/admin/invite-template/test")
+def test_invite_template(db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
+    cfg = email_mod.get_smtp_config(db)
+    test_to = cfg['admin_email'] or cu.email
+    if not test_to:
+        raise HTTPException(400, "No recipient email — set Admin Notification Email in SMTP config")
+    subject, html = email_mod.render_invite_email(cu.full_name or cu.username, f"{cfg['site_url']}/register?code=TEST-PREVIEW", db)
+    sent, err = email_mod.send_email(test_to, f"[Test] {subject}", html, db)
+    if not sent:
+        raise HTTPException(500, err or "Failed to send test invitation")
+    return {"message": f"Test invitation sent to {test_to}"}
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/dashboard/stats")

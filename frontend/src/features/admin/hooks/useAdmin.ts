@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
 import { apiErrorMessage } from '@/lib/utils/api';
-import type { UserAdminUpdate, InviteCodeCreate, SmtpConfig } from '@/types/api';
+import type { UserAdminUpdate, InviteCodeCreate, InviteTemplate, SmtpConfig } from '@/types/api';
 
 export function useAdminUsers() {
   return useQuery({ queryKey: ['admin', 'users'], queryFn: adminApi.listUsers });
@@ -84,5 +84,26 @@ export function useTestSmtpConfig() {
     mutationFn: adminApi.testSmtpConfig,
     onSuccess: (data) => toast(data.message, 'success'),
     onError: (err) => toast(apiErrorMessage(err, 'Test email failed'), 'error'),
+  });
+}
+
+export function useInviteTemplate() {
+  return useQuery({ queryKey: ['admin', 'invite-template'], queryFn: adminApi.getInviteTemplate });
+}
+
+export function useUpdateInviteTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: InviteTemplate) => adminApi.updateInviteTemplate(data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'invite-template'] }); toast('Invitation email saved', 'success'); },
+    onError: (err) => toast(apiErrorMessage(err, 'Failed to save invitation email'), 'error'),
+  });
+}
+
+export function useTestInviteTemplate() {
+  return useMutation({
+    mutationFn: adminApi.testInviteTemplate,
+    onSuccess: (data) => toast(data.message, 'success'),
+    onError: (err) => toast(apiErrorMessage(err, 'Test invitation failed'), 'error'),
   });
 }

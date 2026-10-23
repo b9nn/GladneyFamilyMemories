@@ -13,6 +13,7 @@ import { formatDate } from '@/lib/utils/date';
 import { ALL_PAGES, pageAccessToString, stringToPageAccess, type PageKey } from '@/lib/utils/usePageAccess';
 import type { User, Vignette, SmtpConfig, SmtpConfigResponse } from '@/types/api';
 import { UserLoginEditor } from './components/UserLoginEditor';
+import { InviteTemplateSection } from './components/InviteTemplateSection';
 
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
@@ -681,6 +682,7 @@ export function AdminPage() {
       <PageHeader title="Admin" description="Manage users, invitations, content, and settings" />
       <UsersSection />
       <InviteSection />
+      <InviteTemplateSection />
       <BackgroundSection />
       <SmtpSection />
       <ContentManagementSection />

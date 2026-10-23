@@ -1,5 +1,6 @@
 import os
 import smtplib
+from html import escape as html_escape
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import TYPE_CHECKING
@@ -62,25 +63,59 @@ def send_email(to: str, subject: str, html: str, db: 'Session | None' = None) ->
         return False, str(e)
 
 
-def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | None' = None) -> tuple[bool, str]:
-    cfg = get_smtp_config(db)
-    site_url = cfg['site_url']
-    link = f"{site_url}/register?code={code}"
+INVITE_TEMPLATE_DEFAULTS = {
+    'invite_subject': "Your invitation to Lorna and Tom's Memories",
+    'invite_body': (
+        "Hi {name},\n\n"
+        "Welcome to Lorna and Tom's Memories website.\n\n"
+        "For the moment, we have uploaded the photos we have for Megan and Nemo's fantastic wedding celebration.\n\n"
+        "If you have photos you took that we can add, please text or email them to us."
+    ),
+    'invite_signoff': "Lorna and Tom",
+}
+
+
+def get_invite_template(db: 'Session | None' = None) -> dict:
+    """Return the invitation email wording: DB values override the defaults."""
+    template = dict(INVITE_TEMPLATE_DEFAULTS)
+    if db is not None:
+        from .models import SiteSetting
+        rows = db.query(SiteSetting).filter(SiteSetting.key.in_(list(INVITE_TEMPLATE_DEFAULTS))).all()
+        for row in rows:
+            if row.value:
+                template[row.key] = row.value
+    return template
+
+
+def _text_to_html(text: str) -> str:
+    """Plain text → HTML: blank lines separate paragraphs, single newlines become line breaks."""
+    paragraphs = [p.strip() for p in text.replace('\r\n', '\n').split('\n\n') if p.strip()]
+    return ''.join(f"<p>{html_escape(p).replace(chr(10), '<br>')}</p>" for p in paragraphs)
+
+
+def render_invite_email(to_name: str, link: str, db: 'Session | None' = None) -> tuple[str, str]:
+    """Returns (subject, html). `{name}` in the subject, message or sign-off is replaced with the recipient's name."""
+    t = get_invite_template(db)
+    fill = lambda s: s.replace('{name}', to_name)  # noqa: E731
     html = f"""
     <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
-      <p>Hi {to_name},</p>
-      <p>Welcome to Lorna and Tom's Memories website.</p>
-      <p>For the moment, we have uploaded the photos we have for Megan and Nemo's fantastic wedding celebration.</p>
-      <p>If you have photos you took that we can add, please text or email them to us.</p>
+      {_text_to_html(fill(t['invite_body']))}
       <p style="margin:24px 0;">
         <a href="{link}" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Accept Invitation</a>
       </p>
       <p style="color:#666;font-size:13px;">Or copy this link: <a href="{link}">{link}</a></p>
       <p style="color:#666;font-size:13px;">This invitation code can only be used once.</p>
-      <p>Lorna and Tom</p>
+      {_text_to_html(fill(t['invite_signoff']))}
     </div>
     """
-    return send_email(to_email, "Your invitation to Lorna and Tom's Memories", html, db)
+    return fill(t['invite_subject']), html
+
+
+def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | None' = None) -> tuple[bool, str]:
+    cfg = get_smtp_config(db)
+    link = f"{cfg['site_url']}/register?code={code}"
+    subject, html = render_invite_email(to_name, link, db)
+    return send_email(to_email, subject, html, db)
 
 
 def send_password_reset_email(to_email: str, username: str, token: str, db: 'Session | None' = None) -> bool:

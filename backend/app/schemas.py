@@ -339,3 +339,8 @@ class SmtpConfigResponse(BaseModel):
     admin_email: str
     site_url: str
     configured: bool
+
+class InviteTemplate(BaseModel):
+    subject: str
+    body: str
+    signoff: str = ""
