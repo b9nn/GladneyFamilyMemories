@@ -14,6 +14,7 @@ import { ALL_PAGES, pageAccessToString, stringToPageAccess, type PageKey } from 
 import type { User, Vignette, SmtpConfig, SmtpConfigResponse } from '@/types/api';
 import { UserLoginEditor } from './components/UserLoginEditor';
 import { InviteTemplateSection } from './components/InviteTemplateSection';
+import { AnnouncementSection } from './components/AnnouncementSection';
 
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
@@ -683,6 +684,7 @@ export function AdminPage() {
       <UsersSection />
       <InviteSection />
       <InviteTemplateSection />
+      <AnnouncementSection />
       <BackgroundSection />
       <SmtpSection />
       <ContentManagementSection />

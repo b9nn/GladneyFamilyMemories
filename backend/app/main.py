@@ -401,6 +401,57 @@ def test_invite_template(db: Session = Depends(get_db), cu: models.User = Depend
     return {"message": f"Test invitation sent to {test_to}"}
 
 
+# ── Admin: Announcement Email ─────────────────────────────────────────────────
+
+def _announcement_recipients(db: Session) -> list[models.User]:
+    users = db.query(models.User).filter(models.User.is_active == True, models.User.email.isnot(None)).all()  # noqa: E712
+    return [u for u in users if u.email.strip()]
+
+
+def _check_announcement(payload: Announcement) -> None:
+    if not payload.subject.strip() or not payload.body.strip():
+        raise HTTPException(400, "Subject and message cannot be empty")
+
+
+@app.get("/api/admin/announcement/recipients")
+def announcement_recipients(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    return {"count": len(_announcement_recipients(db))}
+
+
+@app.post("/api/admin/announcement/test")
+def test_announcement(payload: Announcement, db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
+    _check_announcement(payload)
+    cfg = email_mod.get_smtp_config(db)
+    test_to = cfg['admin_email'] or cu.email
+    if not test_to:
+        raise HTTPException(400, "No recipient email — set Admin Notification Email in SMTP config")
+    subject, html = email_mod.render_announcement_email(cu.full_name or cu.username, payload.subject.strip(), payload.body.strip(), db)
+    sent, err = email_mod.send_email(test_to, f"[Test] {subject}", html, db)
+    if not sent:
+        raise HTTPException(500, err or "Failed to send test announcement")
+    return {"message": f"Test announcement sent to {test_to}"}
+
+
+@app.post("/api/admin/announcement/send")
+def send_announcement(payload: Announcement, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    _check_announcement(payload)
+    cfg = email_mod.get_smtp_config(db)
+    if not cfg['smtp_host'] or not cfg['smtp_user']:
+        raise HTTPException(400, "SMTP not configured")
+    recipients = _announcement_recipients(db)
+    if not recipients:
+        raise HTTPException(400, "No active users have an email address")
+    messages = [
+        (u.email.strip(), *email_mod.render_announcement_email(u.full_name or u.username, payload.subject.strip(), payload.body.strip(), db))
+        for u in recipients
+    ]
+    failures = email_mod.send_bulk_email(messages, db)
+    return {
+        "sent": len(messages) - len(failures),
+        "failed": [{"email": to, "error": err} for to, err in failures],
+    }
+
+
 # ── Dashboard ─────────────────────────────────────────────────────────────────
 
 @app.get("/api/dashboard/stats")

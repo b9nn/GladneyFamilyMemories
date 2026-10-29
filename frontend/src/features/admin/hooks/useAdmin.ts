@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
 import { apiErrorMessage } from '@/lib/utils/api';
-import type { UserAdminUpdate, InviteCodeCreate, InviteTemplate, SmtpConfig } from '@/types/api';
+import type { UserAdminUpdate, InviteCodeCreate, InviteTemplate, Announcement, SmtpConfig } from '@/types/api';
 
 export function useAdminUsers() {
   return useQuery({ queryKey: ['admin', 'users'], queryFn: adminApi.listUsers });
@@ -105,5 +105,28 @@ export function useTestInviteTemplate() {
     mutationFn: adminApi.testInviteTemplate,
     onSuccess: (data) => toast(data.message, 'success'),
     onError: (err) => toast(apiErrorMessage(err, 'Test invitation failed'), 'error'),
+  });
+}
+
+export function useAnnouncementRecipients() {
+  return useQuery({ queryKey: ['admin', 'announcement-recipients'], queryFn: adminApi.getAnnouncementRecipients });
+}
+
+export function useTestAnnouncement() {
+  return useMutation({
+    mutationFn: (data: Announcement) => adminApi.testAnnouncement(data),
+    onSuccess: (data) => toast(data.message, 'success'),
+    onError: (err) => toast(apiErrorMessage(err, 'Test announcement failed'), 'error'),
+  });
+}
+
+export function useSendAnnouncement() {
+  return useMutation({
+    mutationFn: (data: Announcement) => adminApi.sendAnnouncement(data),
+    onSuccess: (data) => {
+      if (data.failed.length) toast(`Sent to ${data.sent} — ${data.failed.length} failed`, 'error');
+      else toast(`Announcement sent to ${data.sent} ${data.sent === 1 ? 'person' : 'people'}`, 'success');
+    },
+    onError: (err) => toast(apiErrorMessage(err, 'Failed to send announcement'), 'error'),
   });
 }

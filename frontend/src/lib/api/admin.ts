@@ -1,5 +1,5 @@
 import { client } from './client'
-import type { User, UserAdminUpdate, InviteCode, InviteCodeCreate, InviteTemplate, SmtpConfig, SmtpConfigResponse } from '@/types/api'
+import type { User, UserAdminUpdate, InviteCode, InviteCodeCreate, InviteTemplate, Announcement, AnnouncementResult, SmtpConfig, SmtpConfigResponse } from '@/types/api'
 export const adminApi = {
   listUsers: () => client.get<User[]>('/api/admin/users').then(r => r.data),
   updateUser: (id: number, data: UserAdminUpdate) => client.put<User>(`/api/admin/users/${id}`, data).then(r => r.data),
@@ -17,4 +17,7 @@ export const adminApi = {
   getInviteTemplate: () => client.get<InviteTemplate>('/api/admin/invite-template').then(r => r.data),
   updateInviteTemplate: (data: InviteTemplate) => client.put<InviteTemplate>('/api/admin/invite-template', data).then(r => r.data),
   testInviteTemplate: () => client.post<{ message: string }>('/api/admin/invite-template/test').then(r => r.data),
+  getAnnouncementRecipients: () => client.get<{ count: number }>('/api/admin/announcement/recipients').then(r => r.data),
+  testAnnouncement: (data: Announcement) => client.post<{ message: string }>('/api/admin/announcement/test', data).then(r => r.data),
+  sendAnnouncement: (data: Announcement) => client.post<AnnouncementResult>('/api/admin/announcement/send', data).then(r => r.data),
 }

@@ -45,6 +45,8 @@ export interface UserAdminUpdate { is_active?: boolean; is_admin?: boolean; full
 
 export interface SmtpConfig { smtp_host: string; smtp_port: number; smtp_user: string; smtp_password: string; from_email: string; from_name: string; admin_email: string; site_url: string }
 export interface InviteTemplate { subject: string; body: string; signoff: string }
+export interface Announcement { subject: string; body: string }
+export interface AnnouncementResult { sent: number; failed: { email: string; error: string }[] }
 export interface SmtpConfigResponse { smtp_host: string; smtp_port: number; smtp_user: string; from_email: string; from_name: string; admin_email: string; site_url: string; configured: boolean }
 
 export interface ForgotPasswordRequest { email: string }

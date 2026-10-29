@@ -33,34 +33,72 @@ def get_smtp_config(db: 'Session | None' = None) -> dict:
     return config
 
 
+_NOT_CONFIGURED = "SMTP not configured — set SMTP host and username in Admin > SMTP/Email"
+
+
+def _smtp_connect(cfg: dict) -> smtplib.SMTP:
+    port = cfg['smtp_port']
+    if port == 465:
+        s = smtplib.SMTP_SSL(cfg['smtp_host'], port)
+    else:
+        s = smtplib.SMTP(cfg['smtp_host'], port)
+        s.starttls()
+    s.login(cfg['smtp_user'], cfg['smtp_password'])
+    return s
+
+
+def _build_message(cfg: dict, to: str, subject: str, html: str) -> str:
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"{cfg['from_name']} <{cfg['from_email']}>"
+    msg["To"] = to
+    msg.attach(MIMEText(html, "html"))
+    return msg.as_string()
+
+
 def send_email(to: str, subject: str, html: str, db: 'Session | None' = None) -> tuple[bool, str]:
     """Returns (success, error_message). error_message is empty on success."""
     cfg = get_smtp_config(db)
     if not cfg['smtp_host'] or not cfg['smtp_user']:
-        msg = "SMTP not configured — set SMTP host and username in Admin > SMTP/Email"
-        print(f"[EMAIL] {msg}")
-        return False, msg
+        print(f"[EMAIL] {_NOT_CONFIGURED}")
+        return False, _NOT_CONFIGURED
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"] = f"{cfg['from_name']} <{cfg['from_email']}>"
-        msg["To"] = to
-        msg.attach(MIMEText(html, "html"))
-        port = cfg['smtp_port']
-        if port == 465:
-            with smtplib.SMTP_SSL(cfg['smtp_host'], port) as s:
-                s.login(cfg['smtp_user'], cfg['smtp_password'])
-                s.sendmail(cfg['from_email'], to, msg.as_string())
-        else:
-            with smtplib.SMTP(cfg['smtp_host'], port) as s:
-                s.starttls()
-                s.login(cfg['smtp_user'], cfg['smtp_password'])
-                s.sendmail(cfg['from_email'], to, msg.as_string())
+        with _smtp_connect(cfg) as s:
+            s.sendmail(cfg['from_email'], to, _build_message(cfg, to, subject, html))
         print(f"[EMAIL] Sent to {to}: {subject}")
         return True, ""
     except Exception as e:
         print(f"[EMAIL] Failed sending to {to}: {e}")
         return False, str(e)
+
+
+def send_bulk_email(messages: list[tuple[str, str, str]], db: 'Session | None' = None) -> list[tuple[str, str]]:
+    """Send (to, subject, html) messages over one SMTP connection, reconnecting if it drops.
+    Returns a list of (to, error_message) for the ones that failed."""
+    cfg = get_smtp_config(db)
+    if not cfg['smtp_host'] or not cfg['smtp_user']:
+        return [(to, _NOT_CONFIGURED) for to, _, _ in messages]
+    failures: list[tuple[str, str]] = []
+    conn: smtplib.SMTP | None = None
+    try:
+        for to, subject, html in messages:
+            try:
+                if conn is None:
+                    conn = _smtp_connect(cfg)
+                conn.sendmail(cfg['from_email'], to, _build_message(cfg, to, subject, html))
+                print(f"[EMAIL] Sent to {to}: {subject}")
+            except Exception as e:
+                print(f"[EMAIL] Failed sending to {to}: {e}")
+                failures.append((to, str(e)))
+                if isinstance(e, (smtplib.SMTPServerDisconnected, OSError)):
+                    conn = None
+    finally:
+        if conn is not None:
+            try:
+                conn.quit()
+            except Exception:
+                pass
+    return failures
 
 
 INVITE_TEMPLATE_DEFAULTS = {
@@ -116,6 +154,24 @@ def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | Non
     link = f"{cfg['site_url']}/register?code={code}"
     subject, html = render_invite_email(to_name, link, db)
     return send_email(to_email, subject, html, db)
+
+
+def render_announcement_email(to_name: str, subject: str, body: str, db: 'Session | None' = None) -> tuple[str, str]:
+    """Returns (subject, html). `{name}` in the subject or message is replaced with the recipient's name."""
+    cfg = get_smtp_config(db)
+    site_url = cfg['site_url'] or 'https://mrtag.com'
+    site_label = site_url.removeprefix('https://').removeprefix('http://').rstrip('/')
+    fill = lambda s: s.replace('{name}', to_name)  # noqa: E731
+    html = f"""
+    <div style="font-family:sans-serif;max-width:520px;margin:0 auto;">
+      {_text_to_html(fill(body))}
+      <p style="margin:24px 0;">
+        <a href="{site_url}" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Visit {html_escape(site_label)}</a>
+      </p>
+      <p style="color:#666;font-size:13px;">Or go to <a href="{site_url}">{site_url}</a></p>
+    </div>
+    """
+    return fill(subject), html
 
 
 def send_password_reset_email(to_email: str, username: str, token: str, db: 'Session | None' = None) -> bool:

@@ -344,3 +344,8 @@ class InviteTemplate(BaseModel):
     subject: str
     body: str
     signoff: str = ""
+
+
+class Announcement(BaseModel):
+    subject: str
+    body: str
