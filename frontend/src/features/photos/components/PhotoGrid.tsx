@@ -147,9 +147,11 @@ function PhotoCard({ photo, isAdmin, albums, onDelete, onSelect, onSetCover, onU
   const [showAlbumPicker, setShowAlbumPicker] = useState(false);
 
   // Sync inline date input when the photo prop updates after a modal save + refetch
-  useEffect(() => {
+  const [prevTakenAt, setPrevTakenAt] = useState(photo.taken_at);
+  if (photo.taken_at !== prevTakenAt) {
+    setPrevTakenAt(photo.taken_at);
     setTakenAt(photo.taken_at ? photo.taken_at.slice(0, 10) : '');
-  }, [photo.taken_at]);
+  }
   const [showEditModal, setShowEditModal] = useState(false);
   const pickerRef = useRef<HTMLDivElement>(null);
 
@@ -359,24 +361,21 @@ function SortablePhotoGrid({ photos, isAdmin, onDelete, onSelect, onSetCover, on
   showDetails: boolean;
   onReorderPhotos: (ids: number[]) => void;
 }) {
-  const [items, setItemsState] = useState(() => photos.map(p => p.id));
+  const [items, setItems] = useState(() => photos.map(p => p.id));
   const itemsRef = useRef(items);
   const dragSrcId = useRef<number | null>(null);
   const [draggingId, setDraggingId] = useState<number | null>(null);
 
-  function setItems(updater: (prev: number[]) => number[]) {
-    setItemsState(prev => {
-      const next = updater(prev);
-      itemsRef.current = next;
-      return next;
-    });
+  // Reset the order whenever a fresh photo list arrives
+  const [prevPhotos, setPrevPhotos] = useState(photos);
+  if (photos !== prevPhotos) {
+    setPrevPhotos(photos);
+    setItems(photos.map(p => p.id));
   }
 
   useEffect(() => {
-    const ids = photos.map(p => p.id);
-    itemsRef.current = ids;
-    setItemsState(ids);
-  }, [photos]);
+    itemsRef.current = items;
+  }, [items]);
 
   function handleDragStart(id: number) {
     dragSrcId.current = id;
