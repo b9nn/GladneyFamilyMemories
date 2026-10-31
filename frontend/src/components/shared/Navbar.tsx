@@ -7,14 +7,14 @@ import { usePageAccess, useIsWeddingOnly, type PageKey } from '@/lib/utils/usePa
 
 const navLinks: { to: string; label: string; page?: PageKey }[] = [
   { to: '/', label: 'Dashboard' },
+  { to: '/family-trees', label: 'Family Trees', page: 'family_trees' },
   { to: '/vignettes', label: 'Vignettes', page: 'vignettes' },
   { to: '/photos', label: 'Photos', page: 'photos' },
-  { to: '/audio', label: 'Audio', page: 'audio' },
   { to: '/files', label: 'Files', page: 'files' },
-  { to: '/family-trees', label: 'Family Trees', page: 'family_trees' },
+  { to: '/audio', label: 'Audio', page: 'audio' },
+  { to: '/wedding', label: 'Wedding', page: 'wedding' },
   { to: '/timeline', label: 'Timeline', page: 'timeline' },
   { to: '/search', label: 'Search', page: 'search' },
-  { to: '/wedding', label: 'Wedding', page: 'wedding' },
 ];
 
 export function Navbar() {
