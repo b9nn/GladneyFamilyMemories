@@ -14,6 +14,7 @@ import { ALL_PAGES, pageAccessToString, stringToPageAccess, usePageAccess, type 
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
   files: 'Files', timeline: 'Timeline', search: 'Search', wedding: 'Wedding',
+  family_trees: 'Family Trees',
 };
 
 interface StatCardProps {
@@ -335,6 +336,7 @@ export function DashboardPage() {
     { label: 'Photos', key: 'photos' as const, to: '/photos', page: 'photos' as PageKey },
     { label: 'Audio', key: 'audio_recordings' as const, to: '/audio', page: 'audio' as PageKey },
     { label: 'Files', key: 'files' as const, to: '/files', page: 'files' as PageKey },
+    { label: 'Family Trees', key: 'family_trees' as const, to: '/family-trees', page: 'family_trees' as PageKey },
     { label: 'Wedding', key: 'wedding' as const, to: '/wedding', page: 'wedding' as PageKey },
   ].filter(c => canAccess(c.page));
 

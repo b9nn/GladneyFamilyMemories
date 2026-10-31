@@ -114,9 +114,38 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
   );
 }
 
+interface FileListPageProps {
+  source: string;
+  title: string;
+  description: string;
+  emptyDescription: string;
+}
+
 export function FilesPage() {
+  return (
+    <FileListPage
+      source="files"
+      title="Files"
+      description="Documents and other files"
+      emptyDescription="Upload documents, PDFs, and other files for the family."
+    />
+  );
+}
+
+export function FamilyTreesPage() {
+  return (
+    <FileListPage
+      source="family_trees"
+      title="Family Trees"
+      description="Family tree charts, PDFs and other files"
+      emptyDescription="Upload family tree PDFs, charts, and other files."
+    />
+  );
+}
+
+function FileListPage({ source, title: pageTitle, description, emptyDescription }: FileListPageProps) {
   const queryClient = useQueryClient();
-  const { data: files, isLoading } = useFiles();
+  const { data: files, isLoading } = useFiles(source);
   const updateFile = useUpdateFile();
   const deleteFile = useDeleteFile();
   const reorderFiles = useReorderFiles();
@@ -147,7 +176,7 @@ export function FilesPage() {
     setUploadProgress(0);
     setError('');
     try {
-      await filesApi.upload(selectedFile, title || undefined, undefined, 'files', (pct) => setUploadProgress(pct));
+      await filesApi.upload(selectedFile, title || undefined, undefined, source, (pct) => setUploadProgress(pct));
       await queryClient.invalidateQueries({ queryKey: ['files'] });
       toast('File uploaded', 'success');
       setSelectedFile(null);
@@ -183,8 +212,8 @@ export function FilesPage() {
   return (
     <div>
       <PageHeader
-        title="Files"
-        description="Documents and other files"
+        title={pageTitle}
+        description={description}
         action={isAdmin ? (
           <button
             onClick={() => setShowUpload((v) => !v)}
@@ -273,7 +302,7 @@ export function FilesPage() {
       ) : !files?.length ? (
         <EmptyState
           title="No files yet"
-          description="Upload documents, PDFs, and other files for the family."
+          description={emptyDescription}
           action={isAdmin ? (
             <button
               onClick={() => setShowUpload(true)}

@@ -179,7 +179,7 @@ def admin_list_users(db: Session = Depends(get_db), _: models.User = Depends(get
     return db.query(models.User).order_by(models.User.created_at.desc()).all()
 
 
-_ALL_PAGES = {'vignettes', 'photos', 'audio', 'files', 'timeline', 'search', 'wedding'}
+_ALL_PAGES = {'vignettes', 'photos', 'audio', 'files', 'timeline', 'search', 'wedding', 'family_trees'}
 
 def _page_set(page_access: Optional[str]) -> set:
     if page_access is None:
@@ -462,6 +462,7 @@ def dashboard_stats(db: Session = Depends(get_db), _: models.User = Depends(get_
         "wedding": db.query(models.Photo).filter(models.Photo.source == 'wedding').count(),
         "audio_recordings": db.query(models.AudioRecording).count(),
         "files": db.query(models.File).filter(models.File.source == "files").count(),
+        "family_trees": db.query(models.File).filter(models.File.source == "family_trees").count(),
         "family_members": db.query(models.FamilyMember).count(),
     }
 
@@ -890,8 +891,13 @@ def delete_audio(rid: int, db: Session = Depends(get_db), _: models.User = Depen
 
 # ── Files ─────────────────────────────────────────────────────────────────────
 
+# File sources that have their own page; any other source falls under the Files page
+_FILE_SOURCE_PAGES = {'family_trees': 'family_trees'}
+
+
 @app.get("/api/files", response_model=List[FileResponse])
-def list_files(source: str = Query("files"), db: Session = Depends(get_db), _: models.User = Depends(require_page("files"))):
+def list_files(source: str = Query("files"), db: Session = Depends(get_db), cu: models.User = Depends(get_current_user)):
+    require_page(_FILE_SOURCE_PAGES.get(source, 'files'))(cu)
     files = db.query(models.File).filter(models.File.source == source).order_by(models.File.sort_order.asc(), models.File.created_at.desc()).all()
     result = []
     for f in files:
@@ -906,7 +912,9 @@ def reorder_files(items: List[FileReorderItem], db: Session = Depends(get_db), _
     for item in items:
         db.query(models.File).filter(models.File.id == item.id).update({"sort_order": item.sort_order})
     db.commit()
-    files = db.query(models.File).filter(models.File.source == "files").order_by(models.File.sort_order.asc(), models.File.created_at.desc()).all()
+    first = db.query(models.File).filter(models.File.id == items[0].id).first() if items else None
+    source = first.source if first else "files"
+    files = db.query(models.File).filter(models.File.source == source).order_by(models.File.sort_order.asc(), models.File.created_at.desc()).all()
     result = []
     for f in files:
         d = FileResponse.model_validate(f)

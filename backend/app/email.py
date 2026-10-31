@@ -197,6 +197,7 @@ def send_password_reset_email(to_email: str, username: str, token: str, db: 'Ses
 _PAGE_DISPLAY_NAMES = {
     'vignettes': 'Vignettes', 'photos': 'Photos', 'audio': 'Audio',
     'files': 'Files', 'timeline': 'Timeline', 'search': 'Search', 'wedding': 'Wedding',
+    'family_trees': 'Family Trees',
 }
 
 

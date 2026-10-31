@@ -11,6 +11,7 @@ const navLinks: { to: string; label: string; page?: PageKey }[] = [
   { to: '/photos', label: 'Photos', page: 'photos' },
   { to: '/audio', label: 'Audio', page: 'audio' },
   { to: '/files', label: 'Files', page: 'files' },
+  { to: '/family-trees', label: 'Family Trees', page: 'family_trees' },
   { to: '/timeline', label: 'Timeline', page: 'timeline' },
   { to: '/search', label: 'Search', page: 'search' },
   { to: '/wedding', label: 'Wedding', page: 'wedding' },

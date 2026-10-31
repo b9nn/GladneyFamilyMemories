@@ -26,6 +26,7 @@ const VignettesPage = lazy(() => import('@/features/vignettes/VignettesPage').th
 const PhotosPage = lazy(() => import('@/features/photos/PhotosPage').then(m => ({ default: m.PhotosPage })));
 const AudioPage = lazy(() => import('@/features/audio/AudioPage').then(m => ({ default: m.AudioPage })));
 const FilesPage = lazy(() => import('@/features/files/FilesPage').then(m => ({ default: m.FilesPage })));
+const FamilyTreesPage = lazy(() => import('@/features/files/FilesPage').then(m => ({ default: m.FamilyTreesPage })));
 const TimelinePage = lazy(() => import('@/features/timeline/TimelinePage').then(m => ({ default: m.TimelinePage })));
 const SearchPage = lazy(() => import('@/features/search/SearchPage').then(m => ({ default: m.SearchPage })));
 const AdminPage = lazy(() => import('@/features/admin/AdminPage').then(m => ({ default: m.AdminPage })));
@@ -71,6 +72,7 @@ const router = createBrowserRouter([
       { path: 'photos', element: <PageGuard page="photos"><Suspense fallback={<PageSkeleton />}><PhotosPage /></Suspense></PageGuard> },
       { path: 'audio', element: <PageGuard page="audio"><Suspense fallback={<PageSkeleton />}><AudioPage /></Suspense></PageGuard> },
       { path: 'files', element: <PageGuard page="files"><Suspense fallback={<PageSkeleton />}><FilesPage /></Suspense></PageGuard> },
+      { path: 'family-trees', element: <PageGuard page="family_trees"><Suspense fallback={<PageSkeleton />}><FamilyTreesPage /></Suspense></PageGuard> },
       { path: 'timeline', element: <PageGuard page="timeline"><Suspense fallback={<PageSkeleton />}><TimelinePage /></Suspense></PageGuard> },
       { path: 'search', element: <PageGuard page="search"><Suspense fallback={<PageSkeleton />}><SearchPage /></Suspense></PageGuard> },
       { path: 'wedding', element: <PageGuard page="wedding"><Suspense fallback={<PageSkeleton />}><WeddingPage /></Suspense></PageGuard> },

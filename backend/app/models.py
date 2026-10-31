@@ -155,7 +155,7 @@ class File(Base):
     title = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     file_type = Column(String, nullable=True)
-    source = Column(String, default="files")  # "vignettes" | "files"
+    source = Column(String, default="files")  # "vignettes" | "files" | "family_trees"
     uploaded_by_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     extracted_text = Column(Text, nullable=True)
     sort_order = Column(Integer, default=0)

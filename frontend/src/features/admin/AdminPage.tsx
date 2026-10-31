@@ -19,6 +19,7 @@ import { AnnouncementSection } from './components/AnnouncementSection';
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
   files: 'Files', timeline: 'Timeline', search: 'Search', wedding: 'Wedding',
+  family_trees: 'Family Trees',
 };
 
 function PageAccessPicker({ value, onChange }: { value: PageKey[]; onChange: (pages: PageKey[]) => void }) {
@@ -519,7 +520,7 @@ function SmtpSection() {
   );
 }
 
-type ContentTab = 'vignettes' | 'photos' | 'audio' | 'files';
+type ContentTab = 'vignettes' | 'photos' | 'audio' | 'files' | 'family_trees';
 
 function VignetteRow({ v }: { v: Vignette }) {
   const remove = useDeleteVignette();
@@ -568,6 +569,7 @@ function ContentManagementSection() {
   const { data: photos, isLoading: pl } = usePhotos();
   const { data: recordings, isLoading: al } = useAudioList();
   const { data: files, isLoading: fl } = useFiles();
+  const { data: treeFiles, isLoading: tl } = useFiles('family_trees');
   const deletePhoto = useDeletePhoto();
   const deleteAudio = useDeleteAudio();
   const deleteFile = useDeleteFile();
@@ -577,6 +579,7 @@ function ContentManagementSection() {
     { id: 'photos', label: 'Photos' },
     { id: 'audio', label: 'Audio' },
     { id: 'files', label: 'Files' },
+    { id: 'family_trees', label: 'Family Trees' },
   ];
 
   return (
@@ -655,11 +658,13 @@ function ContentManagementSection() {
         </div>
       )}
 
-      {tab === 'files' && (
-        fl ? <div className="h-20 rounded-lg bg-muted animate-pulse" /> :
-        !files?.length ? <p className="text-sm text-muted-foreground">No files.</p> :
+      {(tab === 'files' || tab === 'family_trees') && (() => {
+        const list = tab === 'files' ? files : treeFiles;
+        const loading = tab === 'files' ? fl : tl;
+        return loading ? <div className="h-20 rounded-lg bg-muted animate-pulse" /> :
+        !list?.length ? <p className="text-sm text-muted-foreground">No files.</p> :
         <div className="rounded-lg border border-border divide-y divide-border">
-          {files.map((f) => (
+          {list.map((f) => (
             <div key={f.id} className="flex items-center gap-3 px-4 py-3">
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-foreground truncate">{f.title ?? f.filename}</p>
@@ -671,8 +676,8 @@ function ContentManagementSection() {
               >Delete</button>
             </div>
           ))}
-        </div>
-      )}
+        </div>;
+      })()}
     </section>
   );
 }
