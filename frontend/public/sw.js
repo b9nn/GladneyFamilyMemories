@@ -1,5 +1,5 @@
 // Minimal service worker — network-first for API, cache-first for assets
-const CACHE = 'gladney-v2';
+const CACHE = 'gladney-v3';
 const API_PREFIX = '/api/';
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -14,6 +14,8 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+  // Leave uploads, cross-origin files (R2) and media range requests to the browser
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin || event.request.headers.has('range')) return;
   // Always network-first for API calls
   if (url.pathname.startsWith(API_PREFIX)) return;
   // Network-first for navigation
