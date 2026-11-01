@@ -42,7 +42,7 @@ export function SearchPage() {
       {!hasQuery && (
         <div className="space-y-1">
           <p className="text-muted-foreground text-sm">Type at least 2 characters to search.</p>
-          <p className="text-muted-foreground text-sm">Search results list all items on the website — vignettes, photos, audio recordings, and files — in which the search term was found.</p>
+          <p className="text-muted-foreground text-sm">Search results list the items you have access to — vignettes, photos, audio recordings, and files — in which the search term was found.</p>
         </div>
       )}
 
@@ -61,7 +61,7 @@ export function SearchPage() {
               {results.length === 0 ? 'No results' : `${results.length} result${results.length !== 1 ? 's' : ''}`} for "{query}"
             </p>
             {results.length > 0 && (
-              <p className="text-sm text-muted-foreground">Search results list all items on the website — vignettes, photos, audio recordings, and files — in which the search term was found.</p>
+              <p className="text-sm text-muted-foreground">Search results list the items you have access to — vignettes, photos, audio recordings, and files — in which the search term was found.</p>
             )}
           </div>
           <div className="space-y-2">

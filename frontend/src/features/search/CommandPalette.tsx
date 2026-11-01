@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Command } from 'cmdk';
 import { useQuery } from '@tanstack/react-query';
 import { searchApi } from '@/lib/api/search';
+import { usePageAccess } from '@/lib/utils/usePageAccess';
 import { FileText, Image, Music, File as FileIcon } from 'lucide-react';
 import type { SearchResult } from '@/types/api';
 
@@ -31,6 +32,7 @@ export function CommandPalette() {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const navigate = useNavigate();
+  const canAccess = usePageAccess();
   const openRef = useRef(false);
 
   useEffect(() => { openRef.current = open; }, [open]);
@@ -70,7 +72,7 @@ export function CommandPalette() {
 
   return (
     <Command.Dialog
-      open={open}
+      open={open && canAccess('search')}
       onOpenChange={setOpen}
       label="Global search"
       shouldFilter={false}

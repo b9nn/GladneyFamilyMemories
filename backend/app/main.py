@@ -12,7 +12,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File as
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse as _StaticFileResponse
 from fastapi.staticfiles import StaticFiles
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from .database import get_db, init_db
@@ -1123,22 +1123,37 @@ def remove_content_tag(ctid: int, db: Session = Depends(get_db), _: models.User 
 # ── Search ────────────────────────────────────────────────────────────────────
 
 @app.get("/api/search", response_model=List[SearchResult])
-def search(q: str = Query(..., min_length=1), db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+def search(q: str = Query(..., min_length=1), db: Session = Depends(get_db), cu: models.User = Depends(require_page("search"))):
     like = f"%{q}%"
+    pages = set(_ALL_PAGES) if cu.is_admin else _page_set(cu.page_access)
     results: List[SearchResult] = []
-    for v in db.query(models.Vignette).filter(models.Vignette.title.ilike(like) | models.Vignette.content.ilike(like)).limit(10).all():
-        results.append(SearchResult(content_type="vignette", id=v.id, title=v.title, created_at=v.created_at))
-    for p in db.query(models.Photo).filter(models.Photo.title.ilike(like) | models.Photo.description.ilike(like)).limit(10).all():
-        results.append(SearchResult(content_type="photo", id=p.id, title=p.title or p.filename, created_at=p.created_at))
-    for a in db.query(models.AudioRecording).filter(models.AudioRecording.title.ilike(like) | models.AudioRecording.description.ilike(like)).limit(10).all():
-        results.append(SearchResult(content_type="audio", id=a.id, title=a.title or a.filename, created_at=a.created_at))
-    for f in db.query(models.File).filter(models.File.source == "files").filter(models.File.title.ilike(like) | models.File.description.ilike(like) | models.File.extracted_text.ilike(like)).limit(10).all():
-        results.append(SearchResult(content_type="file", id=f.id, title=f.title or f.filename, created_at=f.created_at))
-    for fm in db.query(models.FamilyMember).filter(
-        models.FamilyMember.first_name.ilike(like) | models.FamilyMember.last_name.ilike(like) | models.FamilyMember.bio.ilike(like)
-    ).limit(10).all():
-        title = " ".join(filter(None, [fm.first_name, fm.last_name]))
-        results.append(SearchResult(content_type="family_member", id=fm.id, title=title, created_at=fm.created_at))
+    if 'vignettes' in pages:
+        for v in db.query(models.Vignette).filter(models.Vignette.title.ilike(like) | models.Vignette.content.ilike(like)).limit(10).all():
+            results.append(SearchResult(content_type="vignette", id=v.id, title=v.title, created_at=v.created_at))
+    photo_query = db.query(models.Photo).filter(models.Photo.title.ilike(like) | models.Photo.description.ilike(like))
+    if not cu.is_admin:
+        # Non-admins only see photos through albums and the wedding page
+        visible = []
+        if 'photos' in pages:
+            visible.append(models.Photo.album_photos.any(models.AlbumPhoto.album.has(models.Album.is_wedding == False)))  # noqa: E712
+        if 'wedding' in pages:
+            visible.append(models.Photo.source == 'wedding')
+        photo_query = photo_query.filter(or_(*visible)) if visible else None
+    if photo_query is not None:
+        for p in photo_query.limit(10).all():
+            results.append(SearchResult(content_type="photo", id=p.id, title=p.title or p.filename, created_at=p.created_at))
+    if 'audio' in pages:
+        for a in db.query(models.AudioRecording).filter(models.AudioRecording.title.ilike(like) | models.AudioRecording.description.ilike(like)).limit(10).all():
+            results.append(SearchResult(content_type="audio", id=a.id, title=a.title or a.filename, created_at=a.created_at))
+    if 'files' in pages:
+        for f in db.query(models.File).filter(models.File.source == "files").filter(models.File.title.ilike(like) | models.File.description.ilike(like) | models.File.extracted_text.ilike(like)).limit(10).all():
+            results.append(SearchResult(content_type="file", id=f.id, title=f.title or f.filename, created_at=f.created_at))
+    if 'family_trees' in pages:
+        for fm in db.query(models.FamilyMember).filter(
+            models.FamilyMember.first_name.ilike(like) | models.FamilyMember.last_name.ilike(like) | models.FamilyMember.bio.ilike(like)
+        ).limit(10).all():
+            title = " ".join(filter(None, [fm.first_name, fm.last_name]))
+            results.append(SearchResult(content_type="family_member", id=fm.id, title=title, created_at=fm.created_at))
     results.sort(key=lambda x: x.created_at, reverse=True)
     return results
 
