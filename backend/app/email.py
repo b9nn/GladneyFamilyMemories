@@ -183,6 +183,7 @@ def send_password_reset_email(to_email: str, username: str, token: str, db: 'Ses
       <h2 style="color:#1a1a1a;">Reset your password</h2>
       <p>Hi {username},</p>
       <p>Someone (hopefully you) requested a password reset for your account on the Gladney Family Tree.</p>
+      <p>Your username is: <strong>{username}</strong></p>
       <p style="margin:24px 0;">
         <a href="{link}" style="background:#1a1a1a;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;">Reset Password</a>
       </p>

@@ -12,6 +12,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File as
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse as _StaticFileResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from .database import get_db, init_db
@@ -99,9 +100,19 @@ def register(payload: UserRegister, db: Session = Depends(get_db)):
     return TokenResponse(access_token=create_access_token({"sub": str(user.id)}), user=UserResponse.model_validate(user))
 
 
+def _find_user(db: Session, column, value: str) -> Optional[models.User]:
+    """Exact match first, then a case-insensitive match only if it's unambiguous."""
+    value = value.strip()
+    user = db.query(models.User).filter(column == value).first()
+    if user:
+        return user
+    matches = db.query(models.User).filter(func.lower(column) == value.lower()).limit(2).all()
+    return matches[0] if len(matches) == 1 else None
+
+
 @app.post("/api/auth/login", response_model=TokenResponse)
 def login(payload: UserLogin, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.username == payload.username).first()
+    user = _find_user(db, models.User.username, payload.username)
     if not user or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(401, "Invalid username or password")
     if not user.is_active:
@@ -127,7 +138,7 @@ def change_password(payload: PasswordChange, current_user: models.User = Depends
 
 @app.post("/api/auth/forgot-password")
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    user = db.query(models.User).filter(models.User.email == payload.email).first()
+    user = _find_user(db, models.User.email, payload.email)
     if user and user.is_active:
         token = secrets.token_urlsafe(32)
         user.reset_token = token
