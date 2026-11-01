@@ -8,6 +8,7 @@ import { formatDate } from '@/lib/utils/date';
 import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { AudioRecording } from '@/types/api';
 import { useQueryClient } from '@tanstack/react-query';
+import { toast } from '@/stores/toast-store';
 
 type Panel = 'none' | 'record' | 'upload';
 
@@ -32,6 +33,13 @@ export function AudioPage() {
   function handleDelete(id: number) {
     if (!confirm('Delete this recording?')) return;
     deleteAudio.mutate(id);
+  }
+
+  function copyLink(url: string) {
+    navigator.clipboard.writeText(url).then(
+      () => toast('Link copied', 'success'),
+      () => toast('Could not copy link', 'error'),
+    );
   }
 
   function openEdit(rec: AudioRecording) {
@@ -117,6 +125,14 @@ export function AudioPage() {
                 </div>
                 {isAdmin && (
                   <div className="flex gap-3 flex-shrink-0">
+                    {rec.url && (
+                      <button
+                        onClick={() => copyLink(rec.url!)}
+                        className="text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        Copy link
+                      </button>
+                    )}
                     <button
                       onClick={() => openEdit(rec)}
                       className="text-sm text-muted-foreground hover:text-foreground"
