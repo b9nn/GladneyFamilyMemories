@@ -18,7 +18,7 @@ import { AnnouncementSection } from './components/AnnouncementSection';
 
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
-  files: 'Files', timeline: 'Timeline', search: 'Search', wedding: 'Wedding',
+  files: 'Files', search: 'Search', wedding: 'Wedding',
   family_trees: 'Family Trees',
 };
 
@@ -70,7 +70,7 @@ function UserRow({ user }: { user: User }) {
     ? 'Admin (all)'
     : user.page_access === null
     ? 'All pages'
-    : user.page_access.split(',').map((p) => PAGE_LABELS[p.trim() as PageKey] ?? p).join(', ') || 'No pages';
+    : stringToPageAccess(user.page_access).map((p) => PAGE_LABELS[p]).join(', ') || 'No pages';
 
   return (
     <div className="px-4 py-3 space-y-2">
@@ -310,7 +310,7 @@ function InviteSection() {
                   )}
                   {code.email && <span className="ml-2">{code.email}</span>}
                 </div>
-                <div>{code.page_access == null ? 'All pages' : code.page_access.split(',').map((p) => PAGE_LABELS[p.trim() as PageKey] ?? p).join(', ') || 'No pages'}</div>
+                <div>{code.page_access == null ? 'All pages' : stringToPageAccess(code.page_access).map((p) => PAGE_LABELS[p]).join(', ') || 'No pages'}</div>
               </div>
               <button onClick={() => copyCode(code.id, code.code)} className="text-xs text-primary hover:underline flex-shrink-0">
                 {copied === code.id ? 'Copied!' : 'Copy'}

@@ -5,7 +5,7 @@ import { useThemeStore } from '@/stores/theme-store';
 import { cn } from '@/lib/utils/utils';
 import { usePageAccess, useIsWeddingOnly, type PageKey } from '@/lib/utils/usePageAccess';
 
-const navLinks: { to: string; label: string; page?: PageKey }[] = [
+const navLinks: { to: string; label: string; page?: PageKey; adminOnly?: boolean }[] = [
   { to: '/', label: 'Dashboard' },
   { to: '/family-trees', label: 'Family Trees', page: 'family_trees' },
   { to: '/vignettes', label: 'Vignettes', page: 'vignettes' },
@@ -13,7 +13,7 @@ const navLinks: { to: string; label: string; page?: PageKey }[] = [
   { to: '/files', label: 'Files', page: 'files' },
   { to: '/audio', label: 'Audio', page: 'audio' },
   { to: '/wedding', label: 'Wedding', page: 'wedding' },
-  { to: '/timeline', label: 'Timeline', page: 'timeline' },
+  { to: '/timeline', label: 'Timeline', adminOnly: true },
   { to: '/search', label: 'Search', page: 'search' },
 ];
 
@@ -27,6 +27,7 @@ export function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
   const visibleLinks = navLinks.filter((l) => {
     if (l.to === '/' && isWeddingOnly) return false;
+    if (l.adminOnly) return user?.is_admin ?? false;
     return !l.page || canAccess(l.page);
   });
 

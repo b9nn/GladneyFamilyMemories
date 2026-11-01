@@ -190,7 +190,7 @@ def admin_list_users(db: Session = Depends(get_db), _: models.User = Depends(get
     return db.query(models.User).order_by(models.User.created_at.desc()).all()
 
 
-_ALL_PAGES = {'vignettes', 'photos', 'audio', 'files', 'timeline', 'search', 'wedding', 'family_trees'}
+_ALL_PAGES = {'vignettes', 'photos', 'audio', 'files', 'search', 'wedding', 'family_trees'}
 
 def _page_set(page_access: Optional[str]) -> set:
     if page_access is None:
@@ -1151,7 +1151,7 @@ def timeline(
     limit: int = Query(50, le=100),
     offset: int = Query(0),
     db: Session = Depends(get_db),
-    _: models.User = Depends(require_page("timeline")),
+    _: models.User = Depends(get_current_admin_user),
 ):
     types = set(content_types.split(",")) if content_types else {"vignette", "photo", "audio", "file"}
     items: List[TimelineItem] = []

@@ -13,7 +13,7 @@ import { ALL_PAGES, pageAccessToString, stringToPageAccess, usePageAccess, type 
 
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
-  files: 'Files', timeline: 'Timeline', search: 'Search', wedding: 'Wedding',
+  files: 'Files', search: 'Search', wedding: 'Wedding',
   family_trees: 'Family Trees',
 };
 
@@ -181,7 +181,7 @@ function UserRow({ u, currentUserId }: { u: User; currentUserId: number | undefi
     ? 'All pages (admin)'
     : u.page_access === null
     ? 'All pages'
-    : u.page_access.split(',').map((p) => PAGE_LABELS[p.trim() as PageKey] ?? p).join(', ') || 'No pages';
+    : stringToPageAccess(u.page_access).map((p) => PAGE_LABELS[p]).join(', ') || 'No pages';
 
   function handleToggleActive() {
     const action = u.is_active ? 'Deactivate' : 'Reactivate';

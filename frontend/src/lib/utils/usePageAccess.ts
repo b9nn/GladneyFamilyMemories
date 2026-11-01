@@ -1,6 +1,6 @@
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 
-export const ALL_PAGES = ['family_trees', 'vignettes', 'photos', 'files', 'audio', 'wedding', 'timeline', 'search'] as const;
+export const ALL_PAGES = ['family_trees', 'vignettes', 'photos', 'files', 'audio', 'wedding', 'search'] as const;
 export type PageKey = typeof ALL_PAGES[number];
 
 export function usePageAccess() {

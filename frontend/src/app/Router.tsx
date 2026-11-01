@@ -73,7 +73,7 @@ const router = createBrowserRouter([
       { path: 'audio', element: <PageGuard page="audio"><Suspense fallback={<PageSkeleton />}><AudioPage /></Suspense></PageGuard> },
       { path: 'files', element: <PageGuard page="files"><Suspense fallback={<PageSkeleton />}><FilesPage /></Suspense></PageGuard> },
       { path: 'family-trees', element: <PageGuard page="family_trees"><Suspense fallback={<PageSkeleton />}><FamilyTreesPage /></Suspense></PageGuard> },
-      { path: 'timeline', element: <PageGuard page="timeline"><Suspense fallback={<PageSkeleton />}><TimelinePage /></Suspense></PageGuard> },
+      { path: 'timeline', element: <ProtectedRoute requireAdmin><Suspense fallback={<PageSkeleton />}><TimelinePage /></Suspense></ProtectedRoute> },
       { path: 'search', element: <PageGuard page="search"><Suspense fallback={<PageSkeleton />}><SearchPage /></Suspense></PageGuard> },
       { path: 'wedding', element: <PageGuard page="wedding"><Suspense fallback={<PageSkeleton />}><WeddingPage /></Suspense></PageGuard> },
       { path: 'settings/password', element: <Suspense fallback={<PageSkeleton />}><ChangePasswordPage /></Suspense> },
