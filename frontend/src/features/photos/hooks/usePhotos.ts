@@ -1,12 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { photosApi } from '@/lib/api/photos';
 import { toast } from '@/stores/toast-store';
+import { useIsAdmin } from '@/lib/utils/useIsAdmin';
 import type { PhotoUpdate } from '@/types/api';
 
 const KEY = ['photos'];
 
 export function usePhotos() {
-  return useQuery({ queryKey: KEY, queryFn: photosApi.list, staleTime: 0, refetchOnMount: true });
+  const isAdmin = useIsAdmin();
+  return useQuery({ queryKey: KEY, queryFn: photosApi.list, staleTime: 0, refetchOnMount: true, enabled: isAdmin });
 }
 
 export function useUploadPhoto() {

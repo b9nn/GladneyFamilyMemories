@@ -183,11 +183,15 @@ export function PhotosPage() {
             </section>
           )}
 
+          {!isAdmin && !albums?.length && (
+            <EmptyState title="No albums yet" description="Photo albums will appear here once they're added." />
+          )}
+
           {/* ── All photos ── */}
-          <section>
+          {isAdmin && <section>
             <div className="flex items-center justify-between mb-4 gap-3">
               <h2 className="text-base font-semibold text-foreground">All Photos</h2>
-              {isAdmin && (photos?.length ?? 0) > 0 && (
+              {(photos?.length ?? 0) > 0 && (
                 <div className="flex items-center gap-2">
                   <select
                     value={sortKey}
@@ -220,14 +224,14 @@ export function PhotosPage() {
               <EmptyState
                 title="No photos yet"
                 description="Upload your first family photo to get started."
-                action={isAdmin ? (
+                action={
                   <button
                     onClick={() => setShowUpload(true)}
                     className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm hover:bg-primary/90"
                   >
                     Upload photos
                   </button>
-                ) : undefined}
+                }
               />
             ) : (
               <PhotoGrid
@@ -244,7 +248,7 @@ export function PhotosPage() {
                 draggable={(albums?.length ?? 0) > 0}
               />
             )}
-          </section>
+          </section>}
         </div>
       )}
 

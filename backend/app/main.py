@@ -576,7 +576,7 @@ def detach_vignette_photo(vid: int, vp_id: int, db: Session = Depends(get_db), _
 # ── Photos ────────────────────────────────────────────────────────────────────
 
 @app.get("/api/photos", response_model=List[PhotoResponse])
-def list_photos(db: Session = Depends(get_db), _: models.User = Depends(require_page("photos"))):
+def list_photos(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
     photos = db.query(models.Photo).filter(models.Photo.source != 'wedding').order_by(models.Photo.sort_order, models.Photo.created_at.desc()).all()
     result = []
     for p in photos:
