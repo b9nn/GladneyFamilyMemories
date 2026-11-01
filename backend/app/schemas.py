@@ -349,3 +349,6 @@ class InviteTemplate(BaseModel):
 class Announcement(BaseModel):
     subject: str
     body: str
+
+class AnnouncementSend(Announcement):
+    user_ids: Optional[List[int]] = None  # None = all eligible users

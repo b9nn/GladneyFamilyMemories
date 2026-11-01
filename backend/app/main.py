@@ -433,14 +433,17 @@ def test_announcement(payload: Announcement, db: Session = Depends(get_db), cu: 
 
 
 @app.post("/api/admin/announcement/send")
-def send_announcement(payload: Announcement, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+def send_announcement(payload: AnnouncementSend, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
     _check_announcement(payload)
     cfg = email_mod.get_smtp_config(db)
     if not cfg['smtp_host'] or not cfg['smtp_user']:
         raise HTTPException(400, "SMTP not configured")
     recipients = _announcement_recipients(db)
+    if payload.user_ids is not None:
+        selected = set(payload.user_ids)
+        recipients = [u for u in recipients if u.id in selected]
     if not recipients:
-        raise HTTPException(400, "No active users have an email address")
+        raise HTTPException(400, "No active users with an email address to send to")
     messages = [
         (u.email.strip(), *email_mod.render_announcement_email(u.full_name or u.username, payload.subject.strip(), payload.body.strip(), db))
         for u in recipients

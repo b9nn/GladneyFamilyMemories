@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAnnouncementRecipients, useTestAnnouncement, useSendAnnouncement } from '../hooks/useAdmin';
+import { useAdminUsers, useAnnouncementRecipients, useTestAnnouncement, useSendAnnouncement } from '../hooks/useAdmin';
 import type { Announcement } from '@/types/api';
 
 const inputCls = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring';
@@ -15,29 +15,63 @@ const DEFAULT_ANNOUNCEMENT: Announcement = {
 
 export function AnnouncementSection() {
   const { data: recipients } = useAnnouncementRecipients();
+  const { data: users } = useAdminUsers();
   const test = useTestAnnouncement();
   const send = useSendAnnouncement();
   const [form, setForm] = useState<Announcement>(DEFAULT_ANNOUNCEMENT);
-  const count = recipients?.count ?? 0;
+  const [audience, setAudience] = useState<'all' | 'specific'>('all');
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const eligibleUsers = users?.filter((u) => u.is_active && u.email?.trim()) ?? [];
+  const selected = eligibleUsers.filter((u) => selectedIds.includes(u.id));
+  const count = audience === 'all' ? recipients?.count ?? 0 : selected.length;
   const ready = form.subject.trim() !== '' && form.body.trim() !== '';
 
   function set(field: keyof Announcement, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
   }
 
+  function toggleUser(id: number) {
+    setSelectedIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]));
+  }
+
   function handleSend() {
     const who = `${count} ${count === 1 ? 'person' : 'people'}`;
-    if (confirm(`Send this email to ${who} now? This can't be undone.`)) send.mutate(form);
+    if (!confirm(`Send this email to ${who} now? This can't be undone.`)) return;
+    send.mutate(audience === 'all' ? form : { ...form, user_ids: selected.map((u) => u.id) });
   }
 
   return (
     <section>
       <h2 className="text-lg font-semibold text-foreground mb-1">Announcement Email</h2>
       <p className="text-xs text-muted-foreground mb-4">
-        Email every active user who has an email address — for example, to let them know the site has been updated.
+        Email all active users who have an email address, or just the people you pick — for example, to let them know the site has been updated.
         Each person gets their own copy. Test emails go to the Admin Notification Email.
       </p>
       <div className="rounded-lg border border-border bg-card p-6 space-y-4">
+        <fieldset className="space-y-2">
+          <legend className="text-xs font-medium text-muted-foreground">Send to</legend>
+          <div className="flex flex-wrap gap-4">
+            <label className="flex items-center gap-1.5 text-sm text-foreground cursor-pointer select-none">
+              <input type="radio" name="announce-audience" checked={audience === 'all'} onChange={() => setAudience('all')} />
+              All users
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-foreground cursor-pointer select-none">
+              <input type="radio" name="announce-audience" checked={audience === 'specific'} onChange={() => setAudience('specific')} />
+              Specific users
+            </label>
+          </div>
+          {audience === 'specific' && (
+            <div className="max-h-56 overflow-y-auto rounded-md border border-border divide-y divide-border">
+              {eligibleUsers.map((u) => (
+                <label key={u.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer select-none hover:bg-accent">
+                  <input type="checkbox" checked={selectedIds.includes(u.id)} onChange={() => toggleUser(u.id)} className="rounded" />
+                  <span className="text-foreground">{u.full_name ?? u.username}</span>
+                  <span className="min-w-0 truncate text-xs text-muted-foreground">{u.email}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </fieldset>
         <div className="space-y-1">
           <label htmlFor="announce-subject" className="text-xs font-medium text-muted-foreground">Subject</label>
           <input id="announce-subject" className={inputCls} value={form.subject} onChange={(e) => set('subject', e.target.value)} />
@@ -59,7 +93,7 @@ export function AnnouncementSection() {
             disabled={send.isPending || !ready || count === 0}
             className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            {send.isPending ? 'Sending…' : `Send to all users (${count})`}
+            {send.isPending ? 'Sending…' : audience === 'all' ? `Send to all users (${count})` : `Send to selected users (${count})`}
           </button>
           <button
             type="button"
