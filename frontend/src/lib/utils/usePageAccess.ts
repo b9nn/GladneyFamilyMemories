@@ -25,11 +25,11 @@ export function useIsWeddingOnly(): boolean {
 
 export function pageAccessToString(pages: PageKey[]): string | null {
   if (pages.length === ALL_PAGES.length) return null; // null = full access
-  return pages.join(',') || null;
+  return pages.join(','); // '' = no pages
 }
 
 export function stringToPageAccess(value: string | null | undefined): PageKey[] {
-  if (!value) return [...ALL_PAGES];
+  if (value == null) return [...ALL_PAGES];
   const set = new Set(value.split(',').map((p) => p.trim()));
   return ALL_PAGES.filter((p) => set.has(p));
 }

@@ -310,7 +310,7 @@ function InviteSection() {
                   )}
                   {code.email && <span className="ml-2">{code.email}</span>}
                 </div>
-                <div>{code.page_access ? code.page_access.split(',').map((p) => PAGE_LABELS[p.trim() as PageKey] ?? p).join(', ') : 'All pages'}</div>
+                <div>{code.page_access == null ? 'All pages' : code.page_access.split(',').map((p) => PAGE_LABELS[p.trim() as PageKey] ?? p).join(', ') || 'No pages'}</div>
               </div>
               <button onClick={() => copyCode(code.id, code.code)} className="text-xs text-primary hover:underline flex-shrink-0">
                 {copied === code.id ? 'Copied!' : 'Copy'}
