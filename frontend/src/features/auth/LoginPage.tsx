@@ -7,7 +7,6 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setAuth } = useAuthStore();
-  const from = (location.state as { from?: Location })?.from?.pathname ?? '/';
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -21,7 +20,7 @@ export function LoginPage() {
     try {
       const data = await authApi.login({ username, password });
       setAuth(data.user, data.access_token);
-      navigate(from, { replace: true });
+      navigate('/', { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Login failed';
       setError(msg);
