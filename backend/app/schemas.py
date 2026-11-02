@@ -346,7 +346,7 @@ class InviteTemplate(BaseModel):
     signoff: str = ""
 
 
-class DashboardIntro(BaseModel):
+class PageIntro(BaseModel):
     text: str = Field("", max_length=5000)
 
 

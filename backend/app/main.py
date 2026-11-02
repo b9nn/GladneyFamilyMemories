@@ -487,22 +487,34 @@ def dashboard_background(db: Session = Depends(get_db), _: models.User = Depends
     return {"url": get_file_url(bg.file_path) if bg else None}
 
 
-@app.get("/api/dashboard/intro", response_model=DashboardIntro)
-def dashboard_intro(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
-    setting = db.query(models.SiteSetting).filter(models.SiteSetting.key == 'dashboard_intro').first()
-    return DashboardIntro(text=setting.value or "" if setting else "")
+# Pages with an admin-editable introduction; None = any logged-in user, else the page_access key required
+_INTRO_PAGES = {'dashboard': None, 'family_trees': 'family_trees'}
 
 
-@app.put("/api/admin/dashboard-intro", response_model=DashboardIntro)
-def update_dashboard_intro(payload: DashboardIntro, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+def _intro_setting(db: Session, page: str) -> Optional[models.SiteSetting]:
+    if page not in _INTRO_PAGES:
+        raise HTTPException(404, "Unknown page")
+    return db.query(models.SiteSetting).filter(models.SiteSetting.key == f'{page}_intro').first()
+
+
+@app.get("/api/page-intro/{page}", response_model=PageIntro)
+def page_intro(page: str, db: Session = Depends(get_db), cu: models.User = Depends(get_current_user)):
+    setting = _intro_setting(db, page)
+    if _INTRO_PAGES[page]:
+        require_page(_INTRO_PAGES[page])(cu)
+    return PageIntro(text=setting.value or "" if setting else "")
+
+
+@app.put("/api/admin/page-intro/{page}", response_model=PageIntro)
+def update_page_intro(page: str, payload: PageIntro, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    setting = _intro_setting(db, page)
     text = payload.text.strip()
-    setting = db.query(models.SiteSetting).filter(models.SiteSetting.key == 'dashboard_intro').first()
     if setting:
         setting.value = text
     else:
-        db.add(models.SiteSetting(key='dashboard_intro', value=text))
+        db.add(models.SiteSetting(key=f'{page}_intro', value=text))
     db.commit()
-    return DashboardIntro(text=text)
+    return PageIntro(text=text)
 
 
 # ── Vignettes ─────────────────────────────────────────────────────────────────

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useDashboardStats } from './hooks/useDashboard';
-import { DashboardIntroSection } from './components/DashboardIntroSection';
+import { PageIntroSection } from '@/features/page-intro/components/PageIntroSection';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
@@ -349,7 +349,7 @@ export function DashboardPage() {
         <p className="mt-1 text-muted-foreground">Welcome to LandTG Memories</p>
       </div>
 
-      <DashboardIntroSection />
+      <PageIntroSection page="dashboard" />
 
       {stats ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">

@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { PageHeader } from '@/components/shared/PageHeader';
+import { PageIntroSection } from '@/features/page-intro/components/PageIntroSection';
+import type { IntroPage } from '@/lib/api/pageIntro';
 import { EmptyState } from '@/components/shared/EmptyState';
 import { useFiles, useDeleteFile, useUpdateFile, useReorderFiles } from './hooks/useFiles';
 import { filesApi } from '@/lib/api/files';
@@ -119,6 +121,7 @@ interface FileListPageProps {
   title: string;
   description: string;
   emptyDescription: string;
+  introPage?: IntroPage;
 }
 
 export function FilesPage() {
@@ -139,11 +142,12 @@ export function FamilyTreesPage() {
       title="Family Trees"
       description="Family tree charts, PDFs and other files"
       emptyDescription="Upload family tree PDFs, charts, and other files."
+      introPage="family_trees"
     />
   );
 }
 
-function FileListPage({ source, title: pageTitle, description, emptyDescription }: FileListPageProps) {
+function FileListPage({ source, title: pageTitle, description, emptyDescription, introPage }: FileListPageProps) {
   const queryClient = useQueryClient();
   const { data: files, isLoading } = useFiles(source);
   const updateFile = useUpdateFile();
@@ -223,6 +227,8 @@ function FileListPage({ source, title: pageTitle, description, emptyDescription 
           </button>
         ) : undefined}
       />
+
+      {introPage && <PageIntroSection page={introPage} />}
 
       {showUpload && (
         <div className="mb-8 rounded-lg border border-border bg-card p-6 space-y-4">
