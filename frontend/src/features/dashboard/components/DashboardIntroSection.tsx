@@ -65,7 +65,7 @@ export function DashboardIntroSection() {
     <div className="mb-8 rounded-lg border border-border bg-card p-4">
       <div className="space-y-3 max-w-3xl">
         {paragraphs.map((p, i) => (
-          <p key={i} className="text-sm leading-relaxed text-foreground whitespace-pre-line">{p}</p>
+          <p key={i} className="text-lg sm:text-xl leading-relaxed text-yellow-400 whitespace-pre-line">{p}</p>
         ))}
       </div>
       {isAdmin && (
