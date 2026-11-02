@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -344,6 +344,10 @@ class InviteTemplate(BaseModel):
     subject: str
     body: str
     signoff: str = ""
+
+
+class DashboardIntro(BaseModel):
+    text: str = Field("", max_length=5000)
 
 
 class Announcement(BaseModel):

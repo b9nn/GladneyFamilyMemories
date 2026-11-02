@@ -487,6 +487,24 @@ def dashboard_background(db: Session = Depends(get_db), _: models.User = Depends
     return {"url": get_file_url(bg.file_path) if bg else None}
 
 
+@app.get("/api/dashboard/intro", response_model=DashboardIntro)
+def dashboard_intro(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    setting = db.query(models.SiteSetting).filter(models.SiteSetting.key == 'dashboard_intro').first()
+    return DashboardIntro(text=setting.value or "" if setting else "")
+
+
+@app.put("/api/admin/dashboard-intro", response_model=DashboardIntro)
+def update_dashboard_intro(payload: DashboardIntro, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    text = payload.text.strip()
+    setting = db.query(models.SiteSetting).filter(models.SiteSetting.key == 'dashboard_intro').first()
+    if setting:
+        setting.value = text
+    else:
+        db.add(models.SiteSetting(key='dashboard_intro', value=text))
+    db.commit()
+    return DashboardIntro(text=text)
+
+
 # ── Vignettes ─────────────────────────────────────────────────────────────────
 
 def _populate_vignette_photos(v: models.Vignette) -> VignetteResponse:

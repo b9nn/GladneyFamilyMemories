@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useDashboardStats } from './hooks/useDashboard';
+import { DashboardIntroSection } from './components/DashboardIntroSection';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
@@ -347,6 +348,8 @@ export function DashboardPage() {
         <h1 className="text-3xl font-bold text-foreground">Hello, {greeting}</h1>
         <p className="mt-1 text-muted-foreground">Welcome to LandTG Memories</p>
       </div>
+
+      <DashboardIntroSection />
 
       {stats ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
