@@ -1,5 +1,8 @@
-import { useState } from 'react';
-import { useAdminUsers, useAnnouncementRecipients, useTestAnnouncement, useSendAnnouncement } from '../hooks/useAdmin';
+import { useEffect, useRef, useState } from 'react';
+import {
+  useAdminUsers, useAnnouncementRecipients, useTestAnnouncement, useSendAnnouncement,
+  useAnnouncementDraft, useSaveAnnouncementDraft,
+} from '../hooks/useAdmin';
 import type { Announcement } from '@/types/api';
 
 const inputCls = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring';
@@ -13,12 +16,39 @@ const DEFAULT_ANNOUNCEMENT: Announcement = {
   ),
 };
 
-export function AnnouncementSection() {
+/** Wait this long after the last keystroke before saving the wording. */
+const AUTOSAVE_DELAY_MS = 800;
+
+function AnnouncementForm({ initial }: { initial: Announcement }) {
   const { data: recipients } = useAnnouncementRecipients();
   const { data: users } = useAdminUsers();
   const test = useTestAnnouncement();
   const send = useSendAnnouncement();
-  const [form, setForm] = useState<Announcement>(DEFAULT_ANNOUNCEMENT);
+  const saveDraft = useSaveAnnouncementDraft();
+  const [form, setForm] = useState<Announcement>(initial);
+  const [saveState, setSaveState] = useState<'idle' | 'pending' | 'saved' | 'error'>('idle');
+  const lastSaved = useRef<Announcement>(initial);
+  const latest = useRef<Announcement>(initial);
+  const { mutate: persist } = saveDraft;
+
+  // Autosave: keep the server copy equal to whatever was most recently typed.
+  useEffect(() => {
+    latest.current = form;
+    if (form.subject === lastSaved.current.subject && form.body === lastSaved.current.body) return;
+    const t = window.setTimeout(() => {
+      persist(form, {
+        onSuccess: (saved) => { lastSaved.current = saved; setSaveState('saved'); },
+        onError: () => setSaveState('error'),
+      });
+    }, AUTOSAVE_DELAY_MS);
+    return () => window.clearTimeout(t);
+  }, [form, persist]);
+
+  // Leaving the page before the autosave fires: save what's there right away.
+  useEffect(() => () => {
+    const f = latest.current;
+    if (f.subject !== lastSaved.current.subject || f.body !== lastSaved.current.body) persist(f);
+  }, [persist]);
   const [audience, setAudience] = useState<'all' | 'specific'>('all');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const skipReason = (u: { is_active: boolean; email?: string | null }): string | null => {
@@ -37,6 +67,7 @@ export function AnnouncementSection() {
 
   function set(field: keyof Announcement, value: string) {
     setForm((f) => ({ ...f, [field]: value }));
+    setSaveState('pending');
   }
 
   function toggleUser(id: number) {
@@ -127,9 +158,24 @@ export function AnnouncementSection() {
           >
             {test.isPending ? 'Sending…' : 'Send test to me'}
           </button>
-          <button type="button" onClick={() => setForm(DEFAULT_ANNOUNCEMENT)} className="text-xs text-muted-foreground hover:text-foreground">
-            Reset wording
+          <button
+            type="button"
+            onClick={() => {
+              if (!confirm('Replace your wording with the original default wording?')) return;
+              setForm(DEFAULT_ANNOUNCEMENT);
+              const unchanged = DEFAULT_ANNOUNCEMENT.subject === lastSaved.current.subject
+                && DEFAULT_ANNOUNCEMENT.body === lastSaved.current.body;
+              setSaveState(unchanged ? 'saved' : 'pending');
+            }}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            Reset to default wording
           </button>
+          <span className="ml-auto text-xs text-muted-foreground" aria-live="polite">
+            {saveState === 'pending' && 'Saving…'}
+            {saveState === 'saved' && 'Wording saved'}
+            {saveState === 'error' && <span className="text-destructive">Couldn't save wording — check your connection</span>}
+          </span>
         </div>
         {send.data && (
           <div className="rounded-md bg-muted px-3 py-2 text-xs text-foreground space-y-1">
@@ -147,4 +193,17 @@ export function AnnouncementSection() {
       </div>
     </section>
   );
+}
+
+export function AnnouncementSection() {
+  const { data: draft, isLoading } = useAnnouncementDraft();
+  if (isLoading) {
+    return <div className="h-64 rounded-lg border border-border bg-muted animate-pulse" />;
+  }
+  // Use the most recently written wording; fall back to the default for anything never saved.
+  const initial: Announcement = {
+    subject: draft?.subject || DEFAULT_ANNOUNCEMENT.subject,
+    body: draft?.body || DEFAULT_ANNOUNCEMENT.body,
+  };
+  return <AnnouncementForm initial={initial} />;
 }

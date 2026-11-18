@@ -17,6 +17,8 @@ export const adminApi = {
   getInviteTemplate: () => client.get<InviteTemplate>('/api/admin/invite-template').then(r => r.data),
   updateInviteTemplate: (data: InviteTemplate) => client.put<InviteTemplate>('/api/admin/invite-template', data).then(r => r.data),
   testInviteTemplate: () => client.post<{ message: string }>('/api/admin/invite-template/test').then(r => r.data),
+  getAnnouncementDraft: () => client.get<Announcement>('/api/admin/announcement/draft').then(r => r.data),
+  saveAnnouncementDraft: (data: Announcement) => client.put<Announcement>('/api/admin/announcement/draft', data).then(r => r.data),
   getAnnouncementRecipients: () => client.get<{ count: number }>('/api/admin/announcement/recipients').then(r => r.data),
   testAnnouncement: (data: Announcement) => client.post<{ message: string }>('/api/admin/announcement/test', data).then(r => r.data),
   sendAnnouncement: (data: AnnouncementSend) => client.post<AnnouncementResult>('/api/admin/announcement/send', data).then(r => r.data),

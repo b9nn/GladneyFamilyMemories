@@ -108,6 +108,19 @@ export function useTestInviteTemplate() {
   });
 }
 
+export function useAnnouncementDraft() {
+  return useQuery({ queryKey: ['admin', 'announcement-draft'], queryFn: adminApi.getAnnouncementDraft, staleTime: Infinity });
+}
+
+/** Saves the announcement wording quietly (no toast) — called automatically as the admin types. */
+export function useSaveAnnouncementDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Announcement) => adminApi.saveAnnouncementDraft(data),
+    onSuccess: (data) => { qc.setQueryData(['admin', 'announcement-draft'], data); },
+  });
+}
+
 export function useAnnouncementRecipients() {
   return useQuery({ queryKey: ['admin', 'announcement-recipients'], queryFn: adminApi.getAnnouncementRecipients });
 }

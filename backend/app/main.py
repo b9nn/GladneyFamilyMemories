@@ -409,6 +409,30 @@ def _check_announcement(payload: Announcement) -> None:
         raise HTTPException(400, "Subject and message cannot be empty")
 
 
+_ANNOUNCEMENT_DRAFT_KEYS = {'subject': 'announcement_subject', 'body': 'announcement_body'}
+
+
+@app.get("/api/admin/announcement/draft", response_model=Announcement)
+def get_announcement_draft(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    """The most recently written announcement wording (empty strings if none saved yet)."""
+    rows = db.query(models.SiteSetting).filter(models.SiteSetting.key.in_(list(_ANNOUNCEMENT_DRAFT_KEYS.values()))).all()
+    values = {row.key: row.value or "" for row in rows}
+    return Announcement(subject=values.get('announcement_subject', ""), body=values.get('announcement_body', ""))
+
+
+@app.put("/api/admin/announcement/draft", response_model=Announcement)
+def save_announcement_draft(payload: Announcement, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    for field, key in _ANNOUNCEMENT_DRAFT_KEYS.items():
+        value = getattr(payload, field)
+        setting = db.query(models.SiteSetting).filter(models.SiteSetting.key == key).first()
+        if setting:
+            setting.value = value
+        else:
+            db.add(models.SiteSetting(key=key, value=value))
+    db.commit()
+    return payload
+
+
 @app.get("/api/admin/announcement/recipients")
 def announcement_recipients(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
     return {"count": len(_announcement_recipients(db))}
