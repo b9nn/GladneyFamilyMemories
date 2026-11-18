@@ -4,11 +4,14 @@ import { Toaster } from '@/components/shared/Toaster';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { useDashboardBackground } from '@/features/dashboard/hooks/useDashboard';
 import { CommandPalette } from '@/features/search/CommandPalette';
+import { useWelcomeIntro } from '@/features/dashboard/hooks/useWelcomeIntro';
+import { cn } from '@/lib/utils/utils';
 
 export function Layout() {
   const location = useLocation();
   const { data: bg } = useDashboardBackground();
   const showBanner = bg?.url != null;
+  const welcomePhase = useWelcomeIntro();
 
   return (
     <div
@@ -21,7 +24,14 @@ export function Layout() {
       } : undefined}
     >
       <Navbar />
-      {showBanner && <div className="fixed inset-0 bg-black/40 pointer-events-none z-0" />}
+      {showBanner && (
+        <div
+          className={cn(
+            'fixed inset-0 bg-black/40 pointer-events-none z-0 transition-opacity duration-1000 ease-out motion-reduce:transition-none',
+            welcomePhase === 'photo' && 'opacity-0',
+          )}
+        />
+      )}
       <main className="relative z-10 flex-1 mx-auto max-w-7xl w-full px-4 sm:px-6 lg:px-8 py-8 pb-20">
         <ErrorBoundary key={location.pathname}>
           <Outlet />

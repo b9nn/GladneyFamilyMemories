@@ -2,6 +2,8 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useDashboardStats } from './hooks/useDashboard';
+import { useWelcomeIntroStore } from '@/stores/welcome-intro-store';
+import { cn } from '@/lib/utils/utils';
 import { PageIntroSection } from '@/features/page-intro/components/PageIntroSection';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
@@ -331,6 +333,12 @@ export function DashboardPage() {
   const canAccess = usePageAccess();
 
   const greeting = user?.full_name ?? user?.username ?? 'there';
+  const welcomePhase = useWelcomeIntroStore((s) => s.phase);
+  // Welcome intro: hidden while the photo shows alone, then each part fades in a little after the last.
+  const fadeIn = (delay: string) => cn(
+    'transition-opacity duration-1000 ease-out motion-reduce:transition-none',
+    welcomePhase === 'photo' ? 'opacity-0 pointer-events-none' : cn('opacity-100', delay),
+  );
 
   const statCards = [
     { label: 'Family Trees', key: 'family_trees' as const, to: '/family-trees', page: 'family_trees' as PageKey },
@@ -344,13 +352,16 @@ export function DashboardPage() {
   return (
     <div>
 
-      <div className="mb-8">
+      <div className={cn('mb-8', fadeIn('delay-0'))}>
         <h1 className="text-3xl font-bold text-foreground">Hello, {greeting}</h1>
         <p className="mt-1 text-muted-foreground">Welcome to LandTG Memories</p>
       </div>
 
-      <PageIntroSection page="dashboard" />
+      <div className={fadeIn('delay-500')}>
+        <PageIntroSection page="dashboard" />
+      </div>
 
+      <div className={fadeIn('delay-1000')}>
       {stats ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {statCards.map(c => (
@@ -370,6 +381,7 @@ export function DashboardPage() {
       {isAdmin && <UserListSection />}
       {isAdmin && <BackgroundSection />}
       {isAdmin && <InviteSection />}
+      </div>
     </div>
   );
 }

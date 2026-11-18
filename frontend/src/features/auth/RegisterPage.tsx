@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from './stores/auth-store';
 import { authApi } from '@/lib/api/auth';
+import { useWelcomeIntroStore } from '@/stores/welcome-intro-store';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ export function RegisterPage() {
     try {
       const data = await authApi.register(form);
       setAuth(data.user, data.access_token);
+      useWelcomeIntroStore.getState().start();
       navigate('/', { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Registration failed';
