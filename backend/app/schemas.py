@@ -318,22 +318,14 @@ class DashboardStats(BaseModel):
     family_members: int
 
 
-# ── SMTP ──────────────────────────────────────────────────────────────────────
+# ── Email ─────────────────────────────────────────────────────────────────────
 
-class SmtpConfig(BaseModel):
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_user: str = ""
-    smtp_password: str = ""   # empty string means "leave unchanged"
-    from_email: str = ""
+class EmailConfig(BaseModel):
     from_name: str = "Gladney Family Tree"
     admin_email: str = ""
     site_url: str = ""
 
-class SmtpConfigResponse(BaseModel):
-    smtp_host: str
-    smtp_port: int
-    smtp_user: str
+class EmailConfigResponse(BaseModel):
     from_email: str
     from_name: str
     admin_email: str

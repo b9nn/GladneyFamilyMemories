@@ -3,7 +3,6 @@ import { PageHeader } from '@/components/shared/PageHeader';
 import {
   useAdminUsers, useUpdateUser, useDeleteUser, useInviteCodes, useCreateInviteCode,
   useDeleteInviteCode, useSendInvite, useUploadBackground,
-  useSmtpConfig, useUpdateSmtpConfig, useTestSmtpConfig,
 } from './hooks/useAdmin';
 import { useVignettes, useDeleteVignette, useUpdateVignette } from '@/features/vignettes/hooks/useVignettes';
 import { usePhotos, useDeletePhoto } from '@/features/photos/hooks/usePhotos';
@@ -11,10 +10,11 @@ import { useAudioList, useDeleteAudio } from '@/features/audio/hooks/useAudio';
 import { useFiles, useDeleteFile } from '@/features/files/hooks/useFiles';
 import { formatDate } from '@/lib/utils/date';
 import { ALL_PAGES, pageAccessToString, stringToPageAccess, type PageKey } from '@/lib/utils/usePageAccess';
-import type { User, Vignette, SmtpConfig, SmtpConfigResponse } from '@/types/api';
+import type { User, Vignette } from '@/types/api';
 import { UserLoginEditor } from './components/UserLoginEditor';
 import { InviteTemplateSection } from './components/InviteTemplateSection';
 import { AnnouncementSection } from './components/AnnouncementSection';
+import { EmailSection } from './components/EmailSection';
 
 const PAGE_LABELS: Record<PageKey, string> = {
   vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
@@ -367,159 +367,6 @@ function BackgroundSection() {
   );
 }
 
-interface SmtpFormProps {
-  current: SmtpConfigResponse | undefined;
-  save: { mutate: (data: SmtpConfig) => void; isPending: boolean };
-  test: { mutate: () => void; isPending: boolean };
-}
-
-function SmtpForm({ current, save, test }: SmtpFormProps) {
-  const [form, setForm] = useState({
-    smtp_host: current?.smtp_host ?? '',
-    smtp_port: current?.smtp_port ?? 587,
-    smtp_user: current?.smtp_user ?? '',
-    smtp_password: '',
-    from_email: current?.from_email ?? '',
-    from_name: current?.from_name ?? 'LandTG Memories',
-    admin_email: current?.admin_email ?? '',
-    site_url: current?.site_url ?? 'https://mrtag.com',
-  });
-  const [showHelp, setShowHelp] = useState(false);
-
-  function set(field: string, value: string | number) {
-    setForm((f) => ({ ...f, [field]: value }));
-  }
-
-  function applyGmailPreset() {
-    setForm((f) => ({ ...f, smtp_host: 'smtp.gmail.com', smtp_port: 587 }));
-  }
-
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    save.mutate({ ...form, smtp_port: Number(form.smtp_port) });
-  }
-
-  const inputCls = 'w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-ring';
-
-  return (
-    <form onSubmit={handleSubmit} className="rounded-lg border border-border bg-card p-6 space-y-4">
-      <div className="flex flex-wrap items-center gap-3 pb-3 border-b border-border">
-        <button
-          type="button"
-          onClick={() => test.mutate()}
-          disabled={test.isPending || !current?.configured}
-          title={!current?.configured ? 'Save your SMTP settings first' : undefined}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-        >
-          {test.isPending ? 'Sending…' : 'Send a test email'}
-        </button>
-        <button
-          type="button"
-          onClick={applyGmailPreset}
-          className="rounded-md border border-input px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent"
-        >
-          Use Gmail (recommended)
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowHelp((v) => !v)}
-          aria-expanded={showHelp}
-          aria-controls="smtp-gmail-help"
-          className="text-xs text-primary hover:underline ml-auto"
-        >
-          {showHelp ? 'Hide help' : 'How to get a Gmail app password →'}
-        </button>
-      </div>
-
-      {showHelp && (
-        <div id="smtp-gmail-help" role="region" aria-label="Gmail setup instructions" className="rounded-md bg-muted/50 border border-border p-4 text-xs text-foreground space-y-2">
-          <p className="font-medium">Setting up Gmail SMTP (5 minutes):</p>
-          <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-            <li>Visit <a href="https://myaccount.google.com" target="_blank" rel="noreferrer" className="text-primary hover:underline">myaccount.google.com</a> → Security.</li>
-            <li>Enable <strong>2-Step Verification</strong> if not already on (required for app passwords).</li>
-            <li>Open <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" className="text-primary hover:underline">App passwords</a>, choose "Mail" / "Other (Custom name)", type "Family Tree", click Generate.</li>
-            <li>Copy the 16-character password Google shows (no spaces).</li>
-            <li>Paste it into <strong>SMTP Password</strong> below; set <strong>SMTP Username</strong> + <strong>From Email</strong> to your Gmail address.</li>
-          </ol>
-        </div>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">SMTP Host</label>
-          <input className={inputCls} value={form.smtp_host} onChange={(e) => set('smtp_host', e.target.value)} placeholder="smtp.gmail.com" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Port</label>
-          <input className={inputCls} type="number" value={form.smtp_port} onChange={(e) => set('smtp_port', e.target.value)} placeholder="587" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">SMTP Username</label>
-          <input className={inputCls} value={form.smtp_user} onChange={(e) => set('smtp_user', e.target.value)} placeholder="you@gmail.com" autoComplete="off" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">
-            SMTP Password {current?.configured && <span className="text-muted-foreground">(leave blank to keep current)</span>}
-          </label>
-          <input className={inputCls} type="password" value={form.smtp_password} onChange={(e) => set('smtp_password', e.target.value)} placeholder={current?.configured ? '••••••••' : 'App password'} autoComplete="new-password" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">From Email</label>
-          <input className={inputCls} value={form.from_email} onChange={(e) => set('from_email', e.target.value)} placeholder="noreply@mrtag.com" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">From Name</label>
-          <input className={inputCls} value={form.from_name} onChange={(e) => set('from_name', e.target.value)} placeholder="LandTG Memories" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Admin Notification Email</label>
-          <input className={inputCls} value={form.admin_email} onChange={(e) => set('admin_email', e.target.value)} placeholder="admin@example.com" />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium text-muted-foreground">Site URL</label>
-          <input className={inputCls} value={form.site_url} onChange={(e) => set('site_url', e.target.value)} placeholder="https://mrtag.com" />
-        </div>
-      </div>
-      <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={save.isPending}
-          className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-        >
-          {save.isPending ? 'Saving…' : 'Save settings'}
-        </button>
-      </div>
-    </form>
-  );
-}
-
-function SmtpSection() {
-  const { data: current, isLoading } = useSmtpConfig();
-  const save = useUpdateSmtpConfig();
-  const test = useTestSmtpConfig();
-
-  return (
-    <section>
-      <h2 className="text-lg font-semibold text-foreground mb-1">SMTP / Email</h2>
-      <p className="text-xs text-muted-foreground mb-4">
-        Configure outgoing email for invitations and notifications.
-        {current?.configured && <span className="ml-2 text-green-500">● Configured</span>}
-        {current && !current.configured && <span className="ml-2 text-yellow-500">● Not configured</span>}
-      </p>
-      {isLoading ? (
-        <div className="h-40 rounded-lg border border-border bg-muted animate-pulse" />
-      ) : (
-        <SmtpForm
-          key={current ? 'loaded' : 'empty'}
-          current={current}
-          save={save}
-          test={test}
-        />
-      )}
-    </section>
-  );
-}
-
 type ContentTab = 'vignettes' | 'photos' | 'audio' | 'files' | 'family_trees';
 
 function VignetteRow({ v }: { v: Vignette }) {
@@ -691,7 +538,7 @@ export function AdminPage() {
       <InviteTemplateSection />
       <AnnouncementSection />
       <BackgroundSection />
-      <SmtpSection />
+      <EmailSection />
       <ContentManagementSection />
     </div>
   );

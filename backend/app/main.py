@@ -303,36 +303,31 @@ async def upload_background(file: UploadFile = F(...), db: Session = Depends(get
     return {"url": url, "message": "Background updated"}
 
 
-# ── Admin: SMTP Config ────────────────────────────────────────────────────────
+# ── Admin: Email (Resend) Config ──────────────────────────────────────────────
 
-@app.get("/api/admin/smtp-config", response_model=SmtpConfigResponse)
-def get_smtp_config_endpoint(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
-    cfg = email_mod.get_smtp_config(db)
-    return SmtpConfigResponse(
-        smtp_host=cfg['smtp_host'],
-        smtp_port=cfg['smtp_port'],
-        smtp_user=cfg['smtp_user'],
+def _email_config_response(db: Session) -> EmailConfigResponse:
+    cfg = email_mod.get_email_config(db)
+    return EmailConfigResponse(
         from_email=cfg['from_email'],
         from_name=cfg['from_name'],
         admin_email=cfg['admin_email'],
         site_url=cfg['site_url'],
-        configured=bool(cfg['smtp_host'] and cfg['smtp_user']),
+        configured=cfg['configured'],
     )
 
 
-@app.put("/api/admin/smtp-config", response_model=SmtpConfigResponse)
-def update_smtp_config(payload: SmtpConfig, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+@app.get("/api/admin/email-config", response_model=EmailConfigResponse)
+def get_email_config_endpoint(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
+    return _email_config_response(db)
+
+
+@app.put("/api/admin/email-config", response_model=EmailConfigResponse)
+def update_email_config(payload: EmailConfig, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
     fields = {
-        'smtp_host': payload.smtp_host,
-        'smtp_port': str(payload.smtp_port),
-        'smtp_user': payload.smtp_user,
-        'from_email': payload.from_email,
-        'from_name': payload.from_name,
-        'admin_email': payload.admin_email,
-        'site_url': payload.site_url,
+        'from_name': payload.from_name.strip(),
+        'admin_email': payload.admin_email.strip(),
+        'site_url': payload.site_url.strip().rstrip('/'),
     }
-    if payload.smtp_password:
-        fields['smtp_password'] = payload.smtp_password
     for key, value in fields.items():
         setting = db.query(models.SiteSetting).filter(models.SiteSetting.key == key).first()
         if setting:
@@ -340,31 +335,21 @@ def update_smtp_config(payload: SmtpConfig, db: Session = Depends(get_db), _: mo
         else:
             db.add(models.SiteSetting(key=key, value=value))
     db.commit()
-    cfg = email_mod.get_smtp_config(db)
-    return SmtpConfigResponse(
-        smtp_host=cfg['smtp_host'],
-        smtp_port=cfg['smtp_port'],
-        smtp_user=cfg['smtp_user'],
-        from_email=cfg['from_email'],
-        from_name=cfg['from_name'],
-        admin_email=cfg['admin_email'],
-        site_url=cfg['site_url'],
-        configured=bool(cfg['smtp_host'] and cfg['smtp_user']),
-    )
+    return _email_config_response(db)
 
 
-@app.post("/api/admin/smtp-config/test")
-def test_smtp_config(db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
-    cfg = email_mod.get_smtp_config(db)
-    if not cfg['smtp_host'] or not cfg['smtp_user']:
-        raise HTTPException(400, "SMTP not configured")
+@app.post("/api/admin/email-config/test")
+def test_email_config(db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
+    cfg = email_mod.get_email_config(db)
+    if not cfg['configured']:
+        raise HTTPException(400, "Email not configured — RESEND_KEY is not set on the server")
     test_to = cfg['admin_email'] or cu.email
     if not test_to:
-        raise HTTPException(400, "No recipient email — set Admin Email in SMTP config")
+        raise HTTPException(400, "No recipient email — set Admin Notification Email in Email settings")
     sent, err = email_mod.send_email(
         test_to,
         "Test email from Gladney Family Tree",
-        "<h2>SMTP test</h2><p>If you received this, your SMTP configuration is working correctly.</p>",
+        "<h2>Email test</h2><p>If you received this, email sending through Resend is working correctly.</p>",
         db,
     )
     if not sent:
@@ -401,10 +386,10 @@ def update_invite_template(payload: InviteTemplate, db: Session = Depends(get_db
 
 @app.post("/api/admin/invite-template/test")
 def test_invite_template(db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
-    cfg = email_mod.get_smtp_config(db)
+    cfg = email_mod.get_email_config(db)
     test_to = cfg['admin_email'] or cu.email
     if not test_to:
-        raise HTTPException(400, "No recipient email — set Admin Notification Email in SMTP config")
+        raise HTTPException(400, "No recipient email — set Admin Notification Email in Email settings")
     subject, html = email_mod.render_invite_email(cu.full_name or cu.username, f"{cfg['site_url']}/register?code=TEST-PREVIEW", db)
     sent, err = email_mod.send_email(test_to, f"[Test] {subject}", html, db)
     if not sent:
@@ -432,10 +417,10 @@ def announcement_recipients(db: Session = Depends(get_db), _: models.User = Depe
 @app.post("/api/admin/announcement/test")
 def test_announcement(payload: Announcement, db: Session = Depends(get_db), cu: models.User = Depends(get_current_admin_user)):
     _check_announcement(payload)
-    cfg = email_mod.get_smtp_config(db)
+    cfg = email_mod.get_email_config(db)
     test_to = cfg['admin_email'] or cu.email
     if not test_to:
-        raise HTTPException(400, "No recipient email — set Admin Notification Email in SMTP config")
+        raise HTTPException(400, "No recipient email — set Admin Notification Email in Email settings")
     subject, html = email_mod.render_announcement_email(cu.full_name or cu.username, payload.subject.strip(), payload.body.strip(), db)
     sent, err = email_mod.send_email(test_to, f"[Test] {subject}", html, db)
     if not sent:
@@ -446,9 +431,9 @@ def test_announcement(payload: Announcement, db: Session = Depends(get_db), cu: 
 @app.post("/api/admin/announcement/send")
 def send_announcement(payload: AnnouncementSend, db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
     _check_announcement(payload)
-    cfg = email_mod.get_smtp_config(db)
-    if not cfg['smtp_host'] or not cfg['smtp_user']:
-        raise HTTPException(400, "SMTP not configured")
+    cfg = email_mod.get_email_config(db)
+    if not cfg['configured']:
+        raise HTTPException(400, "Email not configured — RESEND_KEY is not set on the server")
     recipients = _announcement_recipients(db)
     if payload.user_ids is not None:
         selected = set(payload.user_ids)

@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/lib/api/admin';
 import { toast } from '@/stores/toast-store';
 import { apiErrorMessage } from '@/lib/utils/api';
-import type { UserAdminUpdate, InviteCodeCreate, InviteTemplate, Announcement, AnnouncementSend, SmtpConfig } from '@/types/api';
+import type { UserAdminUpdate, InviteCodeCreate, InviteTemplate, Announcement, AnnouncementSend, EmailConfig } from '@/types/api';
 
 export function useAdminUsers() {
   return useQuery({ queryKey: ['admin', 'users'], queryFn: adminApi.listUsers });
@@ -66,22 +66,22 @@ export function useUploadBackground() {
   });
 }
 
-export function useSmtpConfig() {
-  return useQuery({ queryKey: ['admin', 'smtp-config'], queryFn: adminApi.getSmtpConfig });
+export function useEmailConfig() {
+  return useQuery({ queryKey: ['admin', 'email-config'], queryFn: adminApi.getEmailConfig });
 }
 
-export function useUpdateSmtpConfig() {
+export function useUpdateEmailConfig() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (data: SmtpConfig) => adminApi.updateSmtpConfig(data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'smtp-config'] }); toast('SMTP settings saved', 'success'); },
-    onError: () => toast('Failed to save SMTP settings', 'error'),
+    mutationFn: (data: EmailConfig) => adminApi.updateEmailConfig(data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['admin', 'email-config'] }); toast('Email settings saved', 'success'); },
+    onError: () => toast('Failed to save email settings', 'error'),
   });
 }
 
-export function useTestSmtpConfig() {
+export function useTestEmailConfig() {
   return useMutation({
-    mutationFn: adminApi.testSmtpConfig,
+    mutationFn: adminApi.testEmailConfig,
     onSuccess: (data) => toast(data.message, 'success'),
     onError: (err) => toast(apiErrorMessage(err, 'Test email failed'), 'error'),
   });

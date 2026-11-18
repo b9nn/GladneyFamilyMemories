@@ -1,5 +1,5 @@
 import { client } from './client'
-import type { User, UserAdminUpdate, InviteCode, InviteCodeCreate, InviteTemplate, Announcement, AnnouncementSend, AnnouncementResult, SmtpConfig, SmtpConfigResponse } from '@/types/api'
+import type { User, UserAdminUpdate, InviteCode, InviteCodeCreate, InviteTemplate, Announcement, AnnouncementSend, AnnouncementResult, EmailConfig, EmailConfigResponse } from '@/types/api'
 export const adminApi = {
   listUsers: () => client.get<User[]>('/api/admin/users').then(r => r.data),
   updateUser: (id: number, data: UserAdminUpdate) => client.put<User>(`/api/admin/users/${id}`, data).then(r => r.data),
@@ -11,9 +11,9 @@ export const adminApi = {
   uploadBackground: (file: File) => { const form = new FormData(); form.append('file', file); return client.post('/api/admin/background', form).then(r => r.data) },
   getDashboardStats: () => client.get('/api/dashboard/stats').then(r => r.data),
   getBackground: () => client.get('/api/dashboard/background').then(r => r.data),
-  getSmtpConfig: () => client.get<SmtpConfigResponse>('/api/admin/smtp-config').then(r => r.data),
-  updateSmtpConfig: (data: SmtpConfig) => client.put<SmtpConfigResponse>('/api/admin/smtp-config', data).then(r => r.data),
-  testSmtpConfig: () => client.post<{ message: string }>('/api/admin/smtp-config/test').then(r => r.data),
+  getEmailConfig: () => client.get<EmailConfigResponse>('/api/admin/email-config').then(r => r.data),
+  updateEmailConfig: (data: EmailConfig) => client.put<EmailConfigResponse>('/api/admin/email-config', data).then(r => r.data),
+  testEmailConfig: () => client.post<{ message: string }>('/api/admin/email-config/test').then(r => r.data),
   getInviteTemplate: () => client.get<InviteTemplate>('/api/admin/invite-template').then(r => r.data),
   updateInviteTemplate: (data: InviteTemplate) => client.put<InviteTemplate>('/api/admin/invite-template', data).then(r => r.data),
   testInviteTemplate: () => client.post<{ message: string }>('/api/admin/invite-template/test').then(r => r.data),

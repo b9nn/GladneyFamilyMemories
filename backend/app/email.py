@@ -1,70 +1,86 @@
+import json
 import os
-import smtplib
+import urllib.error
+import urllib.request
 from html import escape as html_escape
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
 
-_SMTP_KEYS = ['smtp_host', 'smtp_port', 'smtp_user', 'smtp_password',
-              'from_email', 'from_name', 'admin_email', 'site_url']
+# Emails are sent through Resend's HTTP API (https://resend.com/docs/api-reference).
+# The API key comes only from the RESEND_KEY environment variable (Fly.io secret in prod).
+RESEND_API_URL = "https://api.resend.com"
+RESEND_BATCH_LIMIT = 100  # max emails per /emails/batch request
+FROM_EMAIL = "noreply@mrtag.com"  # must be on the domain verified in Resend
+
+# Settings admins may change on the Admin page (stored in site_settings).
+_EDITABLE_KEYS = ['from_name', 'admin_email', 'site_url']
 
 
-def get_smtp_config(db: 'Session | None' = None) -> dict:
-    """Return effective SMTP config: DB values override env vars."""
+def _resend_key() -> str:
+    return os.getenv("RESEND_KEY", "").strip()
+
+
+def get_email_config(db: 'Session | None' = None) -> dict:
+    """Return effective email config: DB values override env vars for editable keys."""
     config: dict = {
-        'smtp_host':     os.getenv("SMTP_HOST", ""),
-        'smtp_port':     int(os.getenv("SMTP_PORT", "587")),
-        'smtp_user':     os.getenv("SMTP_USER", ""),
-        'smtp_password': os.getenv("SMTP_PASSWORD", ""),
-        'from_email':    os.getenv("FROM_EMAIL", "noreply@mrtag.com"),
-        'from_name':     os.getenv("FROM_NAME", "Gladney Family Tree"),
-        'site_url':      os.getenv("SITE_URL", "https://mrtag.com"),
-        'admin_email':   os.getenv("ADMIN_EMAIL", os.getenv("SMTP_USER", "")),
+        'from_email':  FROM_EMAIL,
+        'from_name':   os.getenv("FROM_NAME", "Gladney Family Tree"),
+        'site_url':    os.getenv("SITE_URL", "https://mrtag.com"),
+        'admin_email': os.getenv("ADMIN_EMAIL", ""),
+        'configured':  bool(_resend_key()),
     }
     if db is not None:
         from .models import SiteSetting
-        rows = db.query(SiteSetting).filter(SiteSetting.key.in_(_SMTP_KEYS)).all()
+        rows = db.query(SiteSetting).filter(SiteSetting.key.in_(_EDITABLE_KEYS)).all()
         for row in rows:
             if row.value:
-                config[row.key] = int(row.value) if row.key == 'smtp_port' else row.value
+                config[row.key] = row.value
     return config
 
 
-_NOT_CONFIGURED = "SMTP not configured — set SMTP host and username in Admin > SMTP/Email"
+_NOT_CONFIGURED = "Email not configured — RESEND_KEY is not set on the server"
 
 
-def _smtp_connect(cfg: dict) -> smtplib.SMTP:
-    port = cfg['smtp_port']
-    if port == 465:
-        s = smtplib.SMTP_SSL(cfg['smtp_host'], port)
-    else:
-        s = smtplib.SMTP(cfg['smtp_host'], port)
-        s.starttls()
-    s.login(cfg['smtp_user'], cfg['smtp_password'])
-    return s
+def _from_header(cfg: dict) -> str:
+    return f"{cfg['from_name']} <{cfg['from_email']}>"
 
 
-def _build_message(cfg: dict, to: str, subject: str, html: str) -> str:
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = f"{cfg['from_name']} <{cfg['from_email']}>"
-    msg["To"] = to
-    msg.attach(MIMEText(html, "html"))
-    return msg.as_string()
+def _resend_post(path: str, payload: object) -> object:
+    """POST JSON to the Resend API. Raises RuntimeError with Resend's message on failure."""
+    req = urllib.request.Request(
+        f"{RESEND_API_URL}{path}",
+        data=json.dumps(payload).encode(),
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {_resend_key()}",
+            "Content-Type": "application/json",
+            "User-Agent": "gladney-family-tree/1.0",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read() or b"{}")
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        try:
+            message = json.loads(body).get("message") or body
+        except ValueError:
+            message = body
+        raise RuntimeError(f"Resend error {e.code}: {message}") from None
+    except urllib.error.URLError as e:
+        raise RuntimeError(f"Could not reach Resend: {e.reason}") from None
 
 
 def send_email(to: str, subject: str, html: str, db: 'Session | None' = None) -> tuple[bool, str]:
     """Returns (success, error_message). error_message is empty on success."""
-    cfg = get_smtp_config(db)
-    if not cfg['smtp_host'] or not cfg['smtp_user']:
+    cfg = get_email_config(db)
+    if not cfg['configured']:
         print(f"[EMAIL] {_NOT_CONFIGURED}")
         return False, _NOT_CONFIGURED
     try:
-        with _smtp_connect(cfg) as s:
-            s.sendmail(cfg['from_email'], to, _build_message(cfg, to, subject, html))
+        _resend_post("/emails", {"from": _from_header(cfg), "to": [to], "subject": subject, "html": html})
         print(f"[EMAIL] Sent to {to}: {subject}")
         return True, ""
     except Exception as e:
@@ -73,31 +89,23 @@ def send_email(to: str, subject: str, html: str, db: 'Session | None' = None) ->
 
 
 def send_bulk_email(messages: list[tuple[str, str, str]], db: 'Session | None' = None) -> list[tuple[str, str]]:
-    """Send (to, subject, html) messages over one SMTP connection, reconnecting if it drops.
+    """Send (to, subject, html) messages via Resend's batch endpoint, 100 per request.
     Returns a list of (to, error_message) for the ones that failed."""
-    cfg = get_smtp_config(db)
-    if not cfg['smtp_host'] or not cfg['smtp_user']:
+    cfg = get_email_config(db)
+    if not cfg['configured']:
         return [(to, _NOT_CONFIGURED) for to, _, _ in messages]
     failures: list[tuple[str, str]] = []
-    conn: smtplib.SMTP | None = None
-    try:
-        for to, subject, html in messages:
-            try:
-                if conn is None:
-                    conn = _smtp_connect(cfg)
-                conn.sendmail(cfg['from_email'], to, _build_message(cfg, to, subject, html))
+    from_header = _from_header(cfg)
+    for start in range(0, len(messages), RESEND_BATCH_LIMIT):
+        chunk = messages[start:start + RESEND_BATCH_LIMIT]
+        payload = [{"from": from_header, "to": [to], "subject": subject, "html": html} for to, subject, html in chunk]
+        try:
+            _resend_post("/emails/batch", payload)
+            for to, subject, _ in chunk:
                 print(f"[EMAIL] Sent to {to}: {subject}")
-            except Exception as e:
-                print(f"[EMAIL] Failed sending to {to}: {e}")
-                failures.append((to, str(e)))
-                if isinstance(e, (smtplib.SMTPServerDisconnected, OSError)):
-                    conn = None
-    finally:
-        if conn is not None:
-            try:
-                conn.quit()
-            except Exception:
-                pass
+        except Exception as e:
+            print(f"[EMAIL] Batch of {len(chunk)} failed: {e}")
+            failures.extend((to, str(e)) for to, _, _ in chunk)
     return failures
 
 
@@ -150,7 +158,7 @@ def render_invite_email(to_name: str, link: str, db: 'Session | None' = None) ->
 
 
 def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | None' = None) -> tuple[bool, str]:
-    cfg = get_smtp_config(db)
+    cfg = get_email_config(db)
     link = f"{cfg['site_url']}/register?code={code}"
     subject, html = render_invite_email(to_name, link, db)
     return send_email(to_email, subject, html, db)
@@ -158,7 +166,7 @@ def send_invite_email(to_email: str, to_name: str, code: str, db: 'Session | Non
 
 def render_announcement_email(to_name: str, subject: str, body: str, db: 'Session | None' = None) -> tuple[str, str]:
     """Returns (subject, html). `{name}` in the subject or message is replaced with the recipient's name."""
-    cfg = get_smtp_config(db)
+    cfg = get_email_config(db)
     site_url = cfg['site_url'] or 'https://mrtag.com'
     site_label = site_url.removeprefix('https://').removeprefix('http://').rstrip('/')
     fill = lambda s: s.replace('{name}', to_name)  # noqa: E731
@@ -175,7 +183,7 @@ def render_announcement_email(to_name: str, subject: str, body: str, db: 'Sessio
 
 
 def send_password_reset_email(to_email: str, username: str, token: str, db: 'Session | None' = None) -> bool:
-    cfg = get_smtp_config(db)
+    cfg = get_email_config(db)
     site_url = cfg['site_url'] or 'https://mrtag.com'
     link = f"{site_url}/reset-password?token={token}"
     html = f"""
@@ -203,7 +211,7 @@ _PAGE_DISPLAY_NAMES = {
 
 
 def send_page_access_expanded_email(to_email: str, to_name: str, newly_granted: set, db: 'Session | None' = None) -> None:
-    cfg = get_smtp_config(db)
+    cfg = get_email_config(db)
     site_url = cfg['site_url'] or 'https://mrtag.com'
     page_names = ', '.join(sorted(_PAGE_DISPLAY_NAMES.get(p, p.title()) for p in newly_granted))
     html = f"""
@@ -221,7 +229,7 @@ def send_page_access_expanded_email(to_email: str, to_name: str, newly_granted: 
 
 
 def notify_admin_new_registration(username: str, email: str, db: 'Session | None' = None) -> None:
-    cfg = get_smtp_config(db)
+    cfg = get_email_config(db)
     admin_email = cfg['admin_email']
     if not admin_email:
         return
