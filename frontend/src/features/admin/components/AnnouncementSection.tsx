@@ -21,7 +21,16 @@ export function AnnouncementSection() {
   const [form, setForm] = useState<Announcement>(DEFAULT_ANNOUNCEMENT);
   const [audience, setAudience] = useState<'all' | 'specific'>('all');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
-  const eligibleUsers = users?.filter((u) => u.is_active && u.email?.trim()) ?? [];
+  const skipReason = (u: { is_active: boolean; email?: string | null }): string | null => {
+    if (!u.email?.trim()) return u.is_active ? 'no email address' : 'no email address, account inactive';
+    if (!u.is_active) return 'account inactive';
+    return null;
+  };
+  const displayName = (u: { full_name: string | null; username: string }) => u.full_name?.trim() || u.username;
+  const sortedUsers = [...(users ?? [])].sort((a, b) =>
+    displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base' }));
+  const eligibleUsers = sortedUsers.filter((u) => skipReason(u) === null);
+  const skippedUsers = sortedUsers.filter((u) => skipReason(u) !== null);
   const selected = eligibleUsers.filter((u) => selectedIds.includes(u.id));
   const count = audience === 'all' ? recipients?.count ?? 0 : selected.length;
   const ready = form.subject.trim() !== '' && form.body.trim() !== '';
@@ -62,14 +71,29 @@ export function AnnouncementSection() {
           </div>
           {audience === 'specific' && (
             <div className="max-h-56 overflow-y-auto rounded-md border border-border divide-y divide-border">
-              {eligibleUsers.map((u) => (
-                <label key={u.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer select-none hover:bg-accent">
-                  <input type="checkbox" checked={selectedIds.includes(u.id)} onChange={() => toggleUser(u.id)} className="rounded" />
-                  <span className="text-foreground">{u.full_name ?? u.username}</span>
-                  <span className="min-w-0 truncate text-xs text-muted-foreground">{u.email}</span>
-                </label>
-              ))}
+              {sortedUsers.map((u) => {
+                const reason = skipReason(u);
+                return reason === null ? (
+                  <label key={u.id} className="flex items-center gap-2 px-3 py-2 text-sm cursor-pointer select-none hover:bg-accent">
+                    <input type="checkbox" checked={selectedIds.includes(u.id)} onChange={() => toggleUser(u.id)} className="rounded" />
+                    <span className="text-foreground">{displayName(u)}</span>
+                    <span className="min-w-0 truncate text-xs text-muted-foreground">{u.email}</span>
+                  </label>
+                ) : (
+                  <div key={u.id} className="flex items-center gap-2 px-3 py-2 text-sm opacity-50" title="Can't be emailed — fix this in the Users list above">
+                    <input type="checkbox" disabled className="rounded" aria-label={`${displayName(u)} can't be emailed`} />
+                    <span className="text-foreground">{displayName(u)}</span>
+                    <span className="min-w-0 truncate text-xs italic text-muted-foreground">Can't email: {reason}</span>
+                  </div>
+                );
+              })}
             </div>
+          )}
+          {audience === 'all' && skippedUsers.length > 0 && (
+            <p className="text-xs text-muted-foreground">
+              {skippedUsers.length} {skippedUsers.length === 1 ? 'user is' : 'users are'} skipped (no email address or inactive account).
+              Choose “Specific users” to see who.
+            </p>
           )}
         </fieldset>
         <div className="space-y-1">
