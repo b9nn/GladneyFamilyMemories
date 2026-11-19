@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { cn } from '@/lib/utils/utils';
-import { usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
+import type { PageKey } from '@/lib/utils/usePageAccess';
 
 const navLinks: { to: string; label: string; page?: PageKey; adminOnly?: boolean }[] = [
   { to: '/', label: 'Dashboard' },
@@ -22,12 +22,9 @@ export function Navbar() {
   const { theme, setTheme } = useThemeStore();
   const location = useLocation();
   const navigate = useNavigate();
-  const canAccess = usePageAccess();
   const [menuOpen, setMenuOpen] = useState(false);
-  const visibleLinks = navLinks.filter((l) => {
-    if (l.adminOnly) return user?.is_admin ?? false;
-    return !l.page || canAccess(l.page);
-  });
+  // Pages a user can't access yet stay in the menu and show an "Under construction" notice.
+  const visibleLinks = navLinks.filter((l) => !l.adminOnly || (user?.is_admin ?? false));
 
   function handleLogout() {
     logout();

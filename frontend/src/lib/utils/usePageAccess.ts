@@ -3,6 +3,12 @@ import { useAuthStore } from '@/features/auth/stores/auth-store';
 export const ALL_PAGES = ['family_trees', 'vignettes', 'photos', 'files', 'audio', 'wedding', 'search'] as const;
 export type PageKey = typeof ALL_PAGES[number];
 
+export const PAGE_LABELS: Record<PageKey, string> = {
+  vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
+  files: 'Files', search: 'Search', wedding: 'Wedding',
+  family_trees: 'Family Trees',
+};
+
 export function usePageAccess() {
   const user = useAuthStore((s) => s.user);
 

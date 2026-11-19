@@ -1,8 +1,9 @@
 import { lazy, Suspense } from 'react';
-import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { Layout } from './Layout';
 import { ProtectedRoute } from '@/components/shared/ProtectedRoute';
-import { usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
+import { usePageAccess, PAGE_LABELS, type PageKey } from '@/lib/utils/usePageAccess';
+import { UnderConstruction } from '@/components/shared/UnderConstruction';
 
 function HomeRedirect() {
   return <Suspense fallback={<PageSkeleton />}><DashboardPage /></Suspense>;
@@ -10,7 +11,7 @@ function HomeRedirect() {
 
 function PageGuard({ page, children }: { page: PageKey; children: React.ReactNode }) {
   const canAccess = usePageAccess();
-  if (!canAccess(page)) return <Navigate to="/" replace />;
+  if (!canAccess(page)) return <UnderConstruction title={PAGE_LABELS[page]} />;
   return <>{children}</>;
 }
 

@@ -12,27 +12,29 @@ import type { InviteCode, User } from '@/types/api';
 import { useAdminUsers, useDeleteUser, useUpdateUser } from '@/features/admin/hooks/useAdmin';
 import { formatDate } from '@/lib/utils/date';
 import { useUploadBackground } from '@/features/admin/hooks/useAdmin';
-import { ALL_PAGES, pageAccessToString, stringToPageAccess, usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
-
-const PAGE_LABELS: Record<PageKey, string> = {
-  vignettes: 'Vignettes', photos: 'Photos', audio: 'Audio',
-  files: 'Files', search: 'Search', wedding: 'Wedding',
-  family_trees: 'Family Trees',
-};
+import { ALL_PAGES, PAGE_LABELS, pageAccessToString, stringToPageAccess, usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
 
 interface StatCardProps {
   label: string;
   value: number;
   to: string;
+  locked?: boolean;
 }
 
-function StatCard({ label, value, to }: StatCardProps) {
+function StatCard({ label, value, to, locked }: StatCardProps) {
   return (
     <Link
       to={to}
-      className="block rounded-lg border border-border bg-card p-6 hover:bg-accent transition-colors"
+      className={cn(
+        'block rounded-lg border bg-card p-6 hover:bg-accent transition-colors',
+        locked ? 'border-dashed border-border' : 'border-border',
+      )}
     >
-      <p className="text-3xl font-bold text-foreground">{value}</p>
+      {locked ? (
+        <p className="text-base font-semibold text-muted-foreground leading-9">🚧 Under construction</p>
+      ) : (
+        <p className="text-3xl font-bold text-foreground">{value}</p>
+      )}
       <p className="mt-1 text-sm text-muted-foreground">{label}</p>
     </Link>
   );
@@ -347,7 +349,7 @@ export function DashboardPage() {
     { label: 'Files', key: 'files' as const, to: '/files', page: 'files' as PageKey },
     { label: 'Audio', key: 'audio_recordings' as const, to: '/audio', page: 'audio' as PageKey },
     { label: 'Wedding', key: 'wedding' as const, to: '/wedding', page: 'wedding' as PageKey },
-  ].filter(c => canAccess(c.page));
+  ].map(c => ({ ...c, locked: !canAccess(c.page) }));
 
   return (
     <div>
@@ -365,7 +367,7 @@ export function DashboardPage() {
       {stats ? (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {statCards.map(c => (
-            <StatCard key={c.key} label={c.label} value={stats[c.key] ?? 0} to={c.to} />
+            <StatCard key={c.key} label={c.label} value={stats[c.key] ?? 0} to={c.to} locked={c.locked} />
           ))}
         </div>
       ) : statsError ? (
