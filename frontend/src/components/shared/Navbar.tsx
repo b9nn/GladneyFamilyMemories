@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/features/auth/stores/auth-store';
 import { useThemeStore } from '@/stores/theme-store';
 import { cn } from '@/lib/utils/utils';
-import type { PageKey } from '@/lib/utils/usePageAccess';
+import { usePageAccess, type PageKey } from '@/lib/utils/usePageAccess';
 
 const navLinks: { to: string; label: string; page?: PageKey; adminOnly?: boolean }[] = [
   { to: '/', label: 'Dashboard' },
@@ -23,6 +23,8 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
+  const canAccess = usePageAccess();
+  const isLocked = (l: { page?: PageKey }) => !!l.page && !canAccess(l.page);
   // Pages a user can't access yet stay in the menu and show an "Under construction" notice.
   const visibleLinks = navLinks.filter((l) => !l.adminOnly || (user?.is_admin ?? false));
 
@@ -57,13 +59,16 @@ export function Navbar() {
                 key={link.to}
                 to={link.to}
                 className={cn(
-                  'px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
+                  'px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors flex flex-col items-center leading-tight',
                   location.pathname === link.to
                     ? 'bg-accent text-accent-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                 )}
               >
                 {link.label}
+                {isLocked(link) && (
+                  <span className="text-[10px] font-normal text-muted-foreground">🚧 Under construction</span>
+                )}
               </Link>
             ))}
           </div>
@@ -122,6 +127,9 @@ export function Navbar() {
               )}
             >
               {link.label}
+              {isLocked(link) && (
+                <span className="ml-2 text-xs font-normal text-muted-foreground">🚧 Under construction</span>
+              )}
             </Link>
           ))}
           {user?.is_admin && (
