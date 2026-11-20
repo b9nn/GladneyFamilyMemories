@@ -625,17 +625,31 @@ def detach_vignette_photo(vid: int, vp_id: int, db: Session = Depends(get_db), _
 
 # ── Photos ────────────────────────────────────────────────────────────────────
 
+_VIDEO_EXTS = {'.mp4', '.mov', '.m4v', '.webm', '.avi'}
+
+
+def _is_video(p: models.Photo) -> bool:
+    # Older Photos-page uploads were saved as 'image' even when they were videos, so also check the file extension.
+    return p.media_type == 'video' or Path(p.file_path or '').suffix.lower() in _VIDEO_EXTS
+
+
+def _photo_response(p: models.Photo, url: Optional[str] = None) -> PhotoResponse:
+    d = PhotoResponse.model_validate(p)
+    d.url = url or get_file_url(p.file_path)
+    if _is_video(p):
+        d.media_type = 'video'
+        d.thumb_url = None
+        d.medium_url = None
+    else:
+        d.thumb_url = get_variant_url(p.file_path, "thumb")
+        d.medium_url = get_variant_url(p.file_path, "med")
+    return d
+
+
 @app.get("/api/photos", response_model=List[PhotoResponse])
 def list_photos(db: Session = Depends(get_db), _: models.User = Depends(get_current_admin_user)):
     photos = db.query(models.Photo).filter(models.Photo.source != 'wedding').order_by(models.Photo.sort_order, models.Photo.created_at.desc()).all()
-    result = []
-    for p in photos:
-        d = PhotoResponse.model_validate(p)
-        d.url = get_file_url(p.file_path)
-        d.thumb_url = get_variant_url(p.file_path, "thumb")
-        d.medium_url = get_variant_url(p.file_path, "med")
-        result.append(d)
-    return result
+    return [_photo_response(p) for p in photos]
 
 
 @app.post("/api/photos", response_model=PhotoResponse)
@@ -647,16 +661,14 @@ async def upload_photo(
     cu: models.User = Depends(get_current_user),
 ):
     content = await file.read()
-    key, url = upload_file(content, file.filename or "photo", "photos", file.content_type, convert_heic=True)
-    photo = models.Photo(filename=file.filename or "photo", file_path=key, title=title, description=description, uploaded_by_id=cu.id, source='photos')
+    filename = file.filename or "photo"
+    is_video = (file.content_type or "").startswith("video/") or Path(filename).suffix.lower() in _VIDEO_EXTS
+    key, url = upload_file(content, filename, "photos", file.content_type, convert_heic=not is_video)
+    photo = models.Photo(filename=filename, file_path=key, title=title, description=description, uploaded_by_id=cu.id, source='photos', media_type='video' if is_video else 'image')
     db.add(photo)
     db.commit()
     db.refresh(photo)
-    result = PhotoResponse.model_validate(photo)
-    result.url = url
-    result.thumb_url = get_variant_url(key, "thumb")
-    result.medium_url = get_variant_url(key, "med")
-    return result
+    return _photo_response(photo, url)
 
 
 @app.put("/api/photos/{pid}", response_model=PhotoResponse)
@@ -668,11 +680,7 @@ def update_photo(pid: int, payload: PhotoUpdate, db: Session = Depends(get_db), 
         setattr(p, field, val)
     db.commit()
     db.refresh(p)
-    result = PhotoResponse.model_validate(p)
-    result.url = get_file_url(p.file_path)
-    result.thumb_url = get_variant_url(p.file_path, "thumb")
-    result.medium_url = get_variant_url(p.file_path, "med")
-    return result
+    return _photo_response(p)
 
 
 @app.delete("/api/photos/{pid}")
@@ -687,8 +695,6 @@ def delete_photo(pid: int, db: Session = Depends(get_db), _: models.User = Depen
 
 
 # ── Albums ────────────────────────────────────────────────────────────────────
-
-_VIDEO_EXTS = {'.mp4', '.mov', '.m4v', '.webm', '.avi'}
 
 def _album_cover_url(a: models.Album) -> Optional[str]:
     cover_path = a.background_image if a.background_image and not a.background_image.startswith('http') else None
@@ -764,14 +770,7 @@ def album_photos(aid: int, db: Session = Depends(get_db), _: models.User = Depen
     if not a:
         raise HTTPException(404, "Not found")
     sorted_aps = sorted(a.album_photos, key=lambda ap: (ap.sort_order, ap.id))
-    result = []
-    for ap in sorted_aps:
-        d = PhotoResponse.model_validate(ap.photo)
-        d.url = get_file_url(ap.photo.file_path)
-        d.thumb_url = get_variant_url(ap.photo.file_path, "thumb")
-        d.medium_url = get_variant_url(ap.photo.file_path, "med")
-        result.append(d)
-    return result
+    return [_photo_response(ap.photo) for ap in sorted_aps]
 
 
 @app.put("/api/albums/{aid}/photos/reorder")

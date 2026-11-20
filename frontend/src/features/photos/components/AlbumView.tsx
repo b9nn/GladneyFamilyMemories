@@ -77,7 +77,11 @@ export function AlbumView({ album, onBack, onLightbox, allPhotos: allPhotosProp 
                   onClick={() => handleAdd(photo.id)}
                   className="aspect-square rounded overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary transition-all"
                 >
-                  {(photo.thumb_url || photo.url) ? (
+                  {photo.media_type === 'video' ? (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <span className="rounded-full bg-black/60 w-8 h-8 flex items-center justify-center text-white text-sm">▶</span>
+                    </div>
+                  ) : (photo.thumb_url || photo.url) ? (
                     <img
                       src={photo.thumb_url || photo.url || ''}
                       onError={(e) => {
