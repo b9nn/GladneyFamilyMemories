@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -53,7 +54,9 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  return (
+  // Portal to <body> so the viewer sits above the sticky navbar and fixed footer
+  // (inside <main>'s z-10 stacking context it would be covered by them).
+  return createPortal(
     <div className="fixed inset-0 z-50 flex flex-col bg-black">
       {/* Header bar — always visible */}
       <div className="flex items-center justify-between gap-4 px-4 py-3 bg-gray-900 border-b border-white/10 flex-shrink-0">
@@ -127,7 +130,8 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
