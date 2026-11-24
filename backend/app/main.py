@@ -1234,6 +1234,11 @@ if _FRONTEND_DIST.exists():
     @app.get("/{full_path:path}", include_in_schema=False)
     def spa_fallback(full_path: str):
         file = _FRONTEND_DIST / full_path
-        if file.exists() and file.is_file():
+        if file.exists() and file.is_file() and file.name != "index.html":
             return _StaticFileResponse(str(file))
-        return _StaticFileResponse(str(_FRONTEND_DIST / "index.html"))
+        # index.html must never be cached, or browsers keep loading an old
+        # build after a deploy. Hashed files under /assets are safe to cache.
+        return _StaticFileResponse(
+            str(_FRONTEND_DIST / "index.html"),
+            headers={"Cache-Control": "no-cache"},
+        )
