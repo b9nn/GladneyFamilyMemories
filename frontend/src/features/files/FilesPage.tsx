@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { DragDropContext, Droppable, Draggable, type DropResult } from '@hello-pangea/dnd';
 import { PageHeader } from '@/components/shared/PageHeader';
@@ -45,6 +45,14 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
   const kind = getViewerType(file.file_type);
   const url = file.url ?? '';
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black">
       {/* Header bar — always visible */}
@@ -75,6 +83,13 @@ function FileViewer({ file, onClose }: { file: FileRecord; onClose: () => void }
           <iframe
             src={`https://docs.google.com/viewer?url=${encodeURIComponent(url)}&embedded=true`}
             className="w-full h-full rounded min-h-[80vh]"
+            title={file.title ?? file.filename}
+          />
+        )}
+        {kind === 'pdf' && (
+          <iframe
+            src={url}
+            className="w-full h-full rounded min-h-[80vh] bg-white"
             title={file.title ?? file.filename}
           />
         )}
@@ -333,7 +348,7 @@ function FileListPage({ source, title: pageTitle, description, emptyDescription,
                         onClick={() => {
                           if (!file.url) return;
                           const kind = getViewerType(file.file_type);
-                          if (kind === 'image' || kind === 'video' || kind === 'audio' || kind === 'office') {
+                          if (kind === 'pdf' || kind === 'image' || kind === 'video' || kind === 'audio' || kind === 'office') {
                             setViewing(file);
                           } else {
                             window.open(file.url, '_blank', 'noopener,noreferrer');
